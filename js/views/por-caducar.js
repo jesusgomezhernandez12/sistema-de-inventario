@@ -358,10 +358,12 @@ const PorCaducarView = {
             
             let updatedItem = item;
             if (['baja', 'salida', 'ajuste'].includes(action)) {
-                updatedItem = app.normalizeRecord(await app.apiRequest('index.php?action=operacion', {
+                const operation = await app.apiRequest('index.php?action=operacion', {
                     method: 'POST',
                     body: JSON.stringify({ tipo: action, medicamento_id: item.id, cantidad })
-                }));
+                });
+                updatedItem = app.normalizeRecord(operation.medicamento);
+                if (operation.actividad) app.data.actividades.unshift(app.normalizeRecord(operation.actividad));
                 app.data.medicamentos = app.data.medicamentos.map(current => current.id == id ? updatedItem : current);
             } else {
                 await app.apiRequest('index.php?action=actividades', {

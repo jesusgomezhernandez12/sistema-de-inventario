@@ -176,6 +176,153 @@ input, select, textarea {
     border-radius: 9999px;
 }
 
+/* Stock */
+.stock-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--dark), var(--gray-700));
+    color: var(--light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.stock-summary h2 {
+    margin: 0.25rem 0;
+    font-size: 1.5rem;
+}
+
+.stock-summary p,
+.stock-summary .eyebrow {
+    color: var(--gray-300);
+}
+
+.eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.stock-total {
+    min-width: 150px;
+    padding-left: 1.5rem;
+    border-left: 1px solid rgb(255 255 255 / 0.2);
+    text-align: right;
+}
+
+.stock-total strong {
+    display: block;
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.stock-total span {
+    color: var(--gray-300);
+    font-size: 0.8rem;
+}
+
+.stock-filters {
+    margin-bottom: 1.5rem;
+}
+
+.stock-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stock-product {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 76px;
+    padding: 0.75rem 1rem 0.75rem 1.25rem;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-left: 3px solid var(--success);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.stock-product:hover {
+    border-color: var(--primary-light);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.stock-product-info {
+    min-width: 0;
+}
+
+.stock-product h3 {
+    margin: 0;
+    color: var(--gray-800);
+    font-size: 0.95rem;
+}
+
+.stock-product p {
+    margin: 0.1rem 0;
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+.stock-available {
+    color: var(--gray-500);
+    font-size: 0.72rem;
+}
+
+.stock-available strong {
+    color: var(--success);
+    font-weight: 700;
+}
+
+.stock-product-action {
+    flex-shrink: 0;
+}
+
+.stock-modal-product {
+    margin-bottom: 1.25rem;
+    color: var(--gray-700);
+    font-weight: 600;
+}
+
+.form-help {
+    display: block;
+    margin-top: 0.4rem;
+    color: var(--gray-500);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+    .stock-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .stock-total {
+        width: 100%;
+        padding: 0.75rem 0 0;
+        border-left: 0;
+        border-top: 1px solid rgb(255 255 255 / 0.2);
+        text-align: left;
+    }
+
+    .stock-product {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .stock-product-action .btn {
+        width: 100%;
+    }
+}
+
 .sidebar-footer {
     padding: 1rem;
     border-top: 1px solid var(--gray-700);

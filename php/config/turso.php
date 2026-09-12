@@ -108,7 +108,40 @@ function tursoQuery(string $sql, array $args = []): array
         'stmt' => ['sql' => $sql, 'args' => $args],
     ]]);
 
-    $result = $data['results'][0]['response']['result'] ?? [];
+    return tursoRowsFromResult($data['results'][0]['response']['result'] ?? []);
+}
+
+function tursoQueryBatch(array $queries): array
+{
+    $requests = array_map(static function (array $query): array {
+        return [
+            'type' => 'execute',
+            'stmt' => ['sql' => $query[0], 'args' => $query[1] ?? []],
+        ];
+    }, $queries);
+    $data = tursoRequest($requests);
+    return array_map(static function (array $result): array {
+        return tursoRowsFromResult($result['response']['result'] ?? []);
+    }, $data['results'] ?? []);
+}
+
+function tursoExecuteBatch(array $statements): array
+{
+    $requests = array_map(static function (array $statement): array {
+        return [
+            'type' => 'execute',
+            'stmt' => ['sql' => $statement[0], 'args' => $statement[1] ?? []],
+        ];
+    }, $statements);
+    $data = tursoRequest($requests);
+
+    return array_map(static function (array $result): array {
+        return $result['response']['result'] ?? [];
+    }, $data['results'] ?? []);
+}
+
+function tursoRowsFromResult(array $result): array
+{
     $columns = $result['cols'] ?? [];
     $rows = $result['rows'] ?? [];
 

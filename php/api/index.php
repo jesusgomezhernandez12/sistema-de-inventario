@@ -16,6 +16,11 @@ $method = $_SERVER['REQUEST_METHOD'];
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
 try {
+    if ($action === 'bootstrap' && $method === 'GET') {
+        echo json_encode(bootstrapData());
+        exit;
+    }
+
     if ($action === 'stats' && $method === 'GET') {
         echo json_encode(stats());
         exit;
@@ -158,28 +163,52 @@ function handleOperacion(array $input): void
         $descripcion = "Ajuste de inventario: {$medicamento['nombre']}";
     }
 
-    tursoExecute("UPDATE medicamentos SET cantidad = ?, updated_at = datetime('now') WHERE id = ?", [$nuevoStock, $medicamentoId]);
-    tursoExecute(
-        "INSERT INTO actividades (tipo, medicamento_id, medicamento, cantidad, descripcion, fecha, usuario) VALUES (?, ?, ?, ?, ?, datetime('now'), ?)",
-        [$tipo, $medicamentoId, $medicamento['nombre'], $cantidad ?? $stockActual, $descripcion, $_SESSION['user_nombre']]
-    );
+    $results = tursoExecuteBatch([
+        ["UPDATE medicamentos SET cantidad = ?, updated_at = datetime('now') WHERE id = ?", [$nuevoStock, $medicamentoId]],
+        ["INSERT INTO actividades (tipo, medicamento_id, medicamento, cantidad, descripcion, fecha, usuario) VALUES (?, ?, ?, ?, ?, datetime('now'), ?)", [$tipo, $medicamentoId, $medicamento['nombre'], $cantidad ?? $stockActual, $descripcion, $_SESSION['user_nombre']]],
+        ['SELECT * FROM medicamentos WHERE id = ?', [$medicamentoId]],
+        ['SELECT * FROM actividades WHERE id = last_insert_rowid()'],
+    ]);
 
-    echo json_encode(tursoQuery('SELECT * FROM medicamentos WHERE id = ?', [$medicamentoId])[0] ?? null);
+    $activityId = $results[1]['last_insert_rowid'] ?? null;
+    echo json_encode([
+        'medicamento' => tursoRowsFromResult($results[2])[0] ?? null,
+        'actividad' => tursoRowsFromResult($results[3])[0] ?? null,
+    ]);
 }
 
 function stats(): array
 {
-    $queries = [
-        'totalMedicamentos' => 'SELECT COUNT(*) AS total FROM medicamentos',
-        'totalVacunas' => "SELECT COUNT(*) AS total FROM medicamentos WHERE tipo = 'vacuna'",
-        'caducados' => "SELECT COUNT(*) AS total FROM medicamentos WHERE date(fecha_caducidad) < date('now')",
-        'criticos' => "SELECT COUNT(*) AS total FROM medicamentos WHERE date(fecha_caducidad) BETWEEN date('now') AND date('now', '+30 days')",
-        'advertencia' => "SELECT COUNT(*) AS total FROM medicamentos WHERE date(fecha_caducidad) BETWEEN date('now', '+31 days') AND date('now', '+90 days')",
+    return statsFromRow(tursoQuery(statsSql())[0] ?? []);
+}
+
+function bootstrapData(): array
+{
+    [$medicamentos, $stats] = tursoQueryBatch([
+        ['SELECT * FROM medicamentos ORDER BY fecha_caducidad ASC'],
+        [statsSql()],
+    ]);
+
+    return [
+        'medicamentos' => $medicamentos,
+        'stats' => statsFromRow($stats[0] ?? []),
     ];
-    $result = [];
-    foreach ($queries as $key => $sql) {
-        $result[$key] = (int)(tursoQuery($sql)[0]['total'] ?? 0);
-    }
+}
+
+function statsSql(): string
+{
+    return "SELECT COUNT(*) AS total_medicamentos, SUM(CASE WHEN tipo = 'vacuna' THEN 1 ELSE 0 END) AS total_vacunas, SUM(CASE WHEN date(fecha_caducidad) < date('now') THEN 1 ELSE 0 END) AS caducados, SUM(CASE WHEN date(fecha_caducidad) BETWEEN date('now') AND date('now', '+30 days') THEN 1 ELSE 0 END) AS criticos, SUM(CASE WHEN date(fecha_caducidad) BETWEEN date('now', '+31 days') AND date('now', '+90 days') THEN 1 ELSE 0 END) AS advertencia FROM medicamentos";
+}
+
+function statsFromRow(array $row): array
+{
+    $result = [
+        'totalMedicamentos' => (int)($row['total_medicamentos'] ?? 0),
+        'totalVacunas' => (int)($row['total_vacunas'] ?? 0),
+        'caducados' => (int)($row['caducados'] ?? 0),
+        'criticos' => (int)($row['criticos'] ?? 0),
+        'advertencia' => (int)($row['advertencia'] ?? 0),
+    ];
     $result['proximosCaducar'] = $result['criticos'] + $result['advertencia'];
     return $result;
 }

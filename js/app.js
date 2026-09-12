@@ -7,11 +7,11 @@ const App = {
         stats: {}
     },
 
-    init() {
+    async init() {
         this.bindEvents();
-        this.checkAuth();
-        this.handleRoute();
+        const authenticated = await this.checkAuth();
         window.addEventListener('hashchange', () => this.handleRoute());
+        return authenticated;
     },
 
     async checkAuth() {
@@ -100,15 +100,18 @@ const App = {
 
     async loadInitialData() {
         try {
-            const [medicamentos, actividades, stats] = await Promise.all([
-                this.apiRequest('index.php?action=medicamentos'),
-                this.apiRequest('index.php?action=actividades'),
-                this.apiRequest('index.php?action=stats')
-            ]);
-            this.data.medicamentos = (medicamentos.data || []).map(item => this.normalizeRecord(item));
-            this.data.actividades = (actividades.data || []).map(item => this.normalizeRecord(item));
-            this.data.stats = stats || {};
+            const initialData = await this.apiRequest('index.php?action=bootstrap');
+            this.data.medicamentos = (initialData.medicamentos || []).map(item => this.normalizeRecord(item));
+            this.data.actividades = [];
+            this.data.stats = initialData.stats || {};
             this.renderCurrentView();
+
+            this.apiRequest('index.php?action=actividades')
+                .then(actividades => {
+                    this.data.actividades = (actividades.data || []).map(item => this.normalizeRecord(item));
+                    this.renderCurrentView();
+                })
+                .catch(error => console.warn('No se pudo cargar el historial:', error));
         } catch (error) {
             console.error('Error loading initial data:', error);
             this.showAlert('Error al cargar los datos iniciales', 'danger');
@@ -163,6 +166,7 @@ const App = {
         const titles = {
             dashboard: 'Dashboard',
             'nuevo-registro': 'Nuevo Registro',
+            stock: 'Stock disponible',
             'registro-actividades': 'Registro de Actividades',
             'por-caducar': 'Medicamentos por Caducar'
         };
@@ -182,6 +186,10 @@ const App = {
             case 'nuevo-registro':
                 container.innerHTML = NuevoRegistroView.render(this.data);
                 NuevoRegistroView.bindEvents(this);
+                break;
+            case 'stock':
+                container.innerHTML = StockView.render(this.data);
+                StockView.bindEvents(this);
                 break;
             case 'registro-actividades':
                 container.innerHTML = RegistroActividadesView.render(this.data);
@@ -307,6 +315,9 @@ const App = {
 
 // Inicializar al cargar
 document.addEventListener('DOMContentLoaded', async () => {
-    await App.init();
-    await App.loadInitialData();
+    const authenticated = await App.init();
+    if (authenticated) {
+        await App.loadInitialData();
+        App.handleRoute();
+    }
 });

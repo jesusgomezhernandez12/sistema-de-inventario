@@ -317,25 +317,21 @@ const RegistroActividadesView = {
             }
             data.fecha = new Date(data.fecha).toISOString().replace('T', ' ').slice(0, 19);
 
-            const id = await app.db.insert(
-                `INSERT INTO actividades (tipo, medicamento_id, medicamento, lote, cantidad, descripcion, fecha, usuario, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))`,
-                [
-                    data.tipo,
-                    data.medicamentoId || null,
-                    data.medicamento ?? '',
-                    data.lote ?? '',
-                    data.cantidad,
-                    data.descripcion,
-                    data.fecha,
-                    data.usuario ?? 'Sistema'
-                ]
-            );
-
-            const nueva = await app.db.fetch('SELECT * FROM actividades WHERE id = ?', [id]);
+            const nueva = await app.apiRequest('index.php?action=actividades', {
+                method: 'POST',
+                body: JSON.stringify({
+                    tipo: data.tipo,
+                    medicamento_id: data.medicamentoId || null,
+                    medicamento: data.medicamento ?? '',
+                    lote: data.lote ?? '',
+                    cantidad: data.cantidad,
+                    descripcion: data.descripcion,
+                    fecha: data.fecha
+                })
+            });
 
             app.showAlert('Actividad registrada exitosamente', 'success');
-            app.data.actividades.unshift(nueva);
+            app.data.actividades.unshift(app.normalizeRecord(nueva));
             app.closeModal('modal-nueva-actividad');
             this.currentPage = 1;
             app.renderCurrentView();

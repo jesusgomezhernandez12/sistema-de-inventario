@@ -333,6 +333,16 @@ const PorCaducarView = {
         const item = app.data.medicamentos.find(m => m.id == id);
         if (!item) return;
 
+        let cantidad = null;
+        if (action === 'salida') {
+            cantidad = Number(window.prompt(`Cantidad a retirar (stock disponible: ${item.cantidad})`, '1'));
+            if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > Number(item.cantidad)) return;
+        }
+        if (action === 'ajuste') {
+            cantidad = Number(window.prompt(`Nuevo stock para ${item.nombre}`, item.cantidad));
+            if (!Number.isInteger(cantidad) || cantidad < 0) return;
+        }
+
         const acciones = {
             baja: { tipo: 'baja', descripcion: `Baja por caducidad: ${item.nombre} (${item.presentacion} ${item.concentracion})` },
             alerta: { tipo: 'caducidad', descripcion: `Alerta de caducidad generada: ${item.nombre} (${item.presentacion} ${item.concentracion})` },
@@ -346,23 +356,26 @@ const PorCaducarView = {
         try {
             const fecha = new Date().toISOString().replace('T', ' ').slice(0, 19);
             
-            await app.db.insert(
-                `INSERT INTO actividades (tipo, medicamento_id, medicamento, lote, cantidad, descripcion, fecha, usuario, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))`,
-                [
-                    accion.tipo,
-                    item.id,
-                    item.nombre,
-                    '',
-                    item.cantidad,
-                    accion.descripcion,
-                    fecha,
-                    'Usuario Actual'
-                ]
-            );
-
-            if (action === 'baja') {
-                app.data.medicamentos = app.data.medicamentos.filter(m => m.id != id);
+            let updatedItem = item;
+            if (['baja', 'salida', 'ajuste'].includes(action)) {
+                updatedItem = app.normalizeRecord(await app.apiRequest('index.php?action=operacion', {
+                    method: 'POST',
+                    body: JSON.stringify({ tipo: action, medicamento_id: item.id, cantidad })
+                }));
+                app.data.medicamentos = app.data.medicamentos.map(current => current.id == id ? updatedItem : current);
+            } else {
+                await app.apiRequest('index.php?action=actividades', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        tipo: accion.tipo,
+                        medicamento_id: item.id,
+                        medicamento: item.nombre,
+                        lote: '',
+                        cantidad: item.cantidad,
+                        descripcion: accion.descripcion,
+                        fecha
+                    })
+                });
             }
 
             app.showAlert(`Acción "${action}" registrada correctamente`, 'success');

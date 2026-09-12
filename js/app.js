@@ -1,7 +1,6 @@
 const App = {
     currentView: 'dashboard',
     sidebarOpen: false,
-    db: null,
     data: {
         medicamentos: [],
         actividades: [],
@@ -9,122 +8,39 @@ const App = {
     },
 
     init() {
-        this.initDB();
         this.bindEvents();
         this.checkAuth();
         this.handleRoute();
         window.addEventListener('hashchange', () => this.handleRoute());
     },
 
-    initDB() {
-        // Configuración Turso desde variables de entorno o window.ENV
-        const dbUrl = window.ENV?.TURSO_DATABASE_URL || 'libsql://tu-db-tu-org.turso.io';
-        const authToken = window.ENV?.TURSO_AUTH_TOKEN || '';
-        this.db = new TursoClient(dbUrl, authToken);
-        this.db.setTimeout(15000);
-    },
-
     async checkAuth() {
-        // Verificar sesión en localStorage (simulación de auth stateless)
-        const session = localStorage.getItem('inventario_session');
-        if (session) {
-            try {
-                const user = JSON.parse(session);
-                // Verificar expiración (2 horas)
-                if (user.expires && Date.now() < user.expires) {
-                    this.currentUser = user;
-                    this.updateUserUI(user);
-                    return true;
-                } else {
-                    localStorage.removeItem('inventario_session');
-                }
-            } catch {
-                localStorage.removeItem('inventario_session');
-            }
+        const response = await fetch('php/api/auth.php?action=check', { credentials: 'same-origin' });
+        const result = await response.json();
+        if (result.authenticated) {
+            this.currentUser = result.user;
+            this.updateUserUI(result.user);
+            return true;
         }
-        
-        // Si estamos en login.html, no redirigir
-        if (window.location.pathname.includes('login.html')) {
-            return false;
-        }
-        
-        // Redirigir a login
-        window.location.href = 'login.html';
+        if (!window.location.pathname.includes('login.html')) window.location.href = 'login.html';
         return false;
     },
 
     async login(email, password) {
-        try {
-            const user = await this.db.fetch(
-                'SELECT * FROM usuarios WHERE email = ? AND activo = 1', 
-                [email.toLowerCase()]
-            );
-            
-            if (!user) {
-                throw new Error('Credenciales inválidas');
-            }
-
-            // Verificar password con bcrypt (necesitamos una librería)
-            // Para simplicidad, usamos una verificación simple
-            // En producción usar: await bcrypt.verify(password, user.password)
-            const valid = await this.verifyPassword(password, user.password);
-            if (!valid) {
-                throw new Error('Credenciales inválidas');
-            }
-
-            // Actualizar último acceso
-            await this.db.exec(
-                'UPDATE usuarios SET ultimo_acceso = datetime("now") WHERE id = ?', 
-                [user.id]
-            );
-
-            // Crear sesión (expira en 2 horas)
-            const session = {
-                id: user.id,
-                nombre: user.nombre,
-                email: user.email,
-                rol: user.rol,
-                expires: Date.now() + 2 * 60 * 60 * 1000
-            };
-            
-            localStorage.setItem('inventario_session', JSON.stringify(session));
-            this.currentUser = session;
-            this.updateUserUI(session);
-            
-            return session;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    async verifyPassword(password, hash) {
-        // Usar bcrypt en el navegador via CDN
-        if (typeof bcrypt !== 'undefined') {
-            return await bcrypt.verify(password, hash);
-        }
-        
-        // Fallback: cargar bcrypt dinámicamente
-        await this.loadBcrypt();
-        return await bcrypt.verify(password, hash);
-    },
-
-    async loadBcrypt() {
-        if (typeof bcrypt !== 'undefined') return;
-        
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js';
-            script.onload = () => {
-                window.bcrypt = bcrypt;
-                resolve();
-            };
-            script.onerror = reject;
-            document.head.appendChild(script);
+        const response = await fetch('php/api/auth.php?action=login', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
         });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'No se pudo iniciar sesión');
+        this.currentUser = result.user;
+        return result.user;
     },
 
-    logout() {
-        localStorage.removeItem('inventario_session');
+    async logout() {
+        await fetch('php/api/auth.php?action=logout', { method: 'POST', credentials: 'same-origin' });
         this.currentUser = null;
         window.location.href = 'login.html';
     },
@@ -185,12 +101,12 @@ const App = {
     async loadInitialData() {
         try {
             const [medicamentos, actividades, stats] = await Promise.all([
-                this.db.query('SELECT * FROM medicamentos ORDER BY fecha_caducidad ASC'),
-                this.db.query('SELECT * FROM actividades ORDER BY fecha DESC LIMIT 50'),
-                this.getStats()
+                this.apiRequest('index.php?action=medicamentos'),
+                this.apiRequest('index.php?action=actividades'),
+                this.apiRequest('index.php?action=stats')
             ]);
-            this.data.medicamentos = medicamentos || [];
-            this.data.actividades = actividades || [];
+            this.data.medicamentos = (medicamentos.data || []).map(item => this.normalizeRecord(item));
+            this.data.actividades = (actividades.data || []).map(item => this.normalizeRecord(item));
             this.data.stats = stats || {};
             this.renderCurrentView();
         } catch (error) {
@@ -199,28 +115,30 @@ const App = {
         }
     },
 
-    async getStats() {
-        try {
-            const [totalMedicamentos, totalVacunas, caducados, criticos, advertencia] = await Promise.all([
-                this.db.fetch('SELECT COUNT(*) as total FROM medicamentos'),
-                this.db.fetch("SELECT COUNT(*) as total FROM medicamentos WHERE tipo = 'vacuna'"),
-                this.db.fetch("SELECT COUNT(*) as total FROM medicamentos WHERE date(fecha_caducidad) < date('now')"),
-                this.db.fetch("SELECT COUNT(*) as total FROM medicamentos WHERE date(fecha_caducidad) BETWEEN date('now') AND date('now', '+30 days')"),
-                this.db.fetch("SELECT COUNT(*) as total FROM medicamentos WHERE date(fecha_caducidad) BETWEEN date('now', '+31 days') AND date('now', '+90 days')")
-            ]);
-
-            return {
-                totalMedicamentos: Number(totalMedicamentos?.total ?? 0),
-                totalVacunas: Number(totalVacunas?.total ?? 0),
-                caducados: Number(caducados?.total ?? 0),
-                criticos: Number(criticos?.total ?? 0),
-                advertencia: Number(advertencia?.total ?? 0),
-                proximosCaducar: Number(criticos?.total ?? 0) + Number(advertencia?.total ?? 0)
-            };
-        } catch (error) {
-            console.error('Error getting stats:', error);
-            return {};
+    async apiRequest(endpoint, options = {}) {
+        const response = await fetch(`php/api/${endpoint}`, {
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', ...options.headers },
+            ...options
+        });
+        const result = await response.json();
+        if (response.status === 401) {
+            window.location.href = 'login.html';
+            throw new Error('Sesión expirada');
         }
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+        return result;
+    },
+
+    normalizeRecord(record) {
+        return {
+            ...record,
+            fechaCaducidad: record.fecha_caducidad ?? record.fechaCaducidad,
+            fechaIngreso: record.fecha_ingreso ?? record.fechaIngreso,
+            requiereReceta: Number(record.requiere_receta ?? record.requiereReceta ?? 0),
+            esControlado: Number(record.es_controlado ?? record.esControlado ?? 0),
+            medicamentoId: record.medicamento_id ?? record.medicamentoId
+        };
     },
 
     handleRoute() {
@@ -389,9 +307,6 @@ const App = {
 
 // Inicializar al cargar
 document.addEventListener('DOMContentLoaded', async () => {
-    // Cargar variables de entorno desde script inline o config
-    window.ENV = window.ENV || {};
-    
     await App.init();
     await App.loadInitialData();
 });

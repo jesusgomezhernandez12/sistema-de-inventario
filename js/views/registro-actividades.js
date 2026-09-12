@@ -308,22 +308,34 @@ const RegistroActividadesView = {
         try {
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
-            data.cantidad = parseInt(data.cantidad);
+            data.cantidad = parseInt(data.cantidad) || null;
 
             const medicamento = app.data.medicamentos.find(m => m.id == data.medicamentoId);
             if (medicamento) {
                 data.medicamento = medicamento.nombre;
                 data.lote = '';
             }
-            data.fecha = new Date(data.fecha).toISOString();
+            data.fecha = new Date(data.fecha).toISOString().replace('T', ' ').slice(0, 19);
 
-            const response = await app.fetchAPI('/api/actividades', {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
+            const id = await app.db.insert(
+                `INSERT INTO actividades (tipo, medicamento_id, medicamento, lote, cantidad, descripcion, fecha, usuario, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))`,
+                [
+                    data.tipo,
+                    data.medicamentoId || null,
+                    data.medicamento ?? '',
+                    data.lote ?? '',
+                    data.cantidad,
+                    data.descripcion,
+                    data.fecha,
+                    data.usuario ?? 'Sistema'
+                ]
+            );
+
+            const nueva = await app.db.fetch('SELECT * FROM actividades WHERE id = ?', [id]);
 
             app.showAlert('Actividad registrada exitosamente', 'success');
-            app.data.actividades.unshift(response);
+            app.data.actividades.unshift(nueva);
             app.closeModal('modal-nueva-actividad');
             this.currentPage = 1;
             app.renderCurrentView();

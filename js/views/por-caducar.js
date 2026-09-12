@@ -344,18 +344,22 @@ const PorCaducarView = {
         if (!accion) return;
 
         try {
-            await app.fetchAPI('/api/actividades', {
-                method: 'POST',
-                body: JSON.stringify({
-                    ...accion,
-                    medicamentoId: item.id,
-                    medicamento: item.nombre,
-                    lote: item.lote,
-                    cantidad: item.cantidad,
-                    fecha: new Date().toISOString(),
-                    usuario: 'Usuario Actual'
-                })
-            });
+            const fecha = new Date().toISOString().replace('T', ' ').slice(0, 19);
+            
+            await app.db.insert(
+                `INSERT INTO actividades (tipo, medicamento_id, medicamento, lote, cantidad, descripcion, fecha, usuario, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))`,
+                [
+                    accion.tipo,
+                    item.id,
+                    item.nombre,
+                    '',
+                    item.cantidad,
+                    accion.descripcion,
+                    fecha,
+                    'Usuario Actual'
+                ]
+            );
 
             if (action === 'baja') {
                 app.data.medicamentos = app.data.medicamentos.filter(m => m.id != id);

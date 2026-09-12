@@ -134,17 +134,32 @@ const NuevoRegistroView = {
         try {
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
-            data.requiereReceta = formData.has('requiereReceta');
-            data.esControlado = formData.has('esControlado');
+            data.requiereReceta = formData.has('requiereReceta') ? 1 : 0;
+            data.esControlado = formData.has('esControlado') ? 1 : 0;
             data.cantidad = parseInt(data.cantidad);
 
-            const response = await app.fetchAPI('/api/medicamentos', {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
+            const id = await app.db.insert(
+                `INSERT INTO medicamentos (nombre, tipo, presentacion, concentracion, cantidad, unidad, fecha_caducidad, fecha_ingreso, observaciones, requiere_receta, es_controlado, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))`,
+                [
+                    data.nombre,
+                    data.tipo,
+                    data.presentacion ?? '',
+                    data.concentracion ?? '',
+                    data.cantidad,
+                    data.unidad ?? 'frascos',
+                    data.fechaCaducidad,
+                    data.fechaIngreso ?? new Date().toISOString().split('T')[0],
+                    data.observaciones ?? '',
+                    data.requiereReceta,
+                    data.esControlado
+                ]
+            );
+
+            const nuevo = await app.db.fetch('SELECT * FROM medicamentos WHERE id = ?', [id]);
 
             app.showAlert('Registro guardado exitosamente', 'success');
-            app.data.medicamentos.unshift(response);
+            app.data.medicamentos.unshift(nuevo);
             this.resetForm(form);
             app.renderCurrentView();
 

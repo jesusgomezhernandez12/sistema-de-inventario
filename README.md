@@ -1,135 +1,254 @@
-# Sistema de Inventario Digital de Medicamentos y Vacunas
+# Inventario Ganadero - Medicamentos y Vacunas
 
-Sistema web frontend para la gestión de inventario de medicamentos y vacunas, desarrollado con PHP, JavaScript y CSS.
+Sistema web **100% estático** (HTML/CSS/JS) para gestión de inventario veterinario.
+**Backend: Turso (libSQL) directo desde el navegador** — sin PHP, sin servidor backend.
 
-## Características
+## ✨ Características
 
-- **Dashboard**: Vista general con estadísticas, actividad reciente y alertas de caducidad
-- **Nuevo Registro**: Formulario completo para registrar medicamentos y vacunas
-- **Registro de Actividades**: Historial de entradas, salidas, ajustes, caducidades y bajas con filtros y paginación
-- **Medicamentos por Caducar**: Lista detallada con filtros por rango de días, exportación a CSV y acciones rápidas
+- **Login**: Autenticación con roles (Admin, Veterinario, Técnico) + bcrypt en cliente
+- **Dashboard**: Stats en tiempo real, actividad reciente, alertas de caducidad
+- **Nuevo Registro**: Formulario validado para medicamentos/vacunas veterinarios
+- **Registro de Actividades**: Historial con filtros, paginación, modales CRUD
+- **Medicamentos por Caducar**: Filtros por rango, exportación CSV, acciones rápidas
 
-## Tecnologías
+## 🛠 Stack Tecnológico
 
-- **Frontend**: HTML5, CSS3 (CSS Variables, Grid, Flexbox), JavaScript ES6+ (Módulos)
-- **Backend**: PHP 8+ (API REST simple)
-- **Base de Datos**: MySQL/MariaDB
-- **Iconos**: Font Awesome 6
-- **Fuente**: Inter (Google Fonts)
+| Capa | Tecnología |
+|------|------------|
+| **Frontend** | HTML5, CSS3 (Variables, Grid, Flexbox), JS ES6+ (Módulos) |
+| **Base de Datos** | **Turso (libSQL/SQLite vía HTTP)** — conexión directa navegador→DB |
+| **Auth** | bcryptjs (CDN) + localStorage (JWT-like session) |
+| **Despliegue** | **Vercel/Netlify/GitHub Pages/Cloudflare Pages** (static hosting) |
+| **Iconos/Fuentes** | Font Awesome 6, Inter (Google Fonts) |
 
-## Estructura del Proyecto
+## 📁 Estructura del Proyecto
 
 ```
 sistema-de-inventario/
-├── index.php                 # Punto de entrada principal
+├── index.html                 # App principal (requiere login)
+├── login.html                 # Página de login
+├── start.sh                   # 🚀 Lanzador (Python/Node/PHP server)
 ├── css/
-│   └── styles.css           # Estilos principales
+│   └── styles.css            # Estilos principales
 ├── js/
-│   ├── app.js               # Aplicación principal (routing, estado, utilidades)
+│   ├── app.js                # Core: routing, estado, Turso client
+│   ├── lib/
+│   │   └── turso-client.js   # 🔑 Cliente HTTP para Turso (libSQL)
 │   └── views/
-│       ├── dashboard.js     # Vista Dashboard
-│       ├── nuevo-registro.js # Vista Nuevo Registro
-│       ├── registro-actividades.js # Vista Registro de Actividades
-│       └── por-caducar.js   # Vista Medicamentos por Caducar
-├── php/
-│   ├── api/
-│   │   └── index.php        # Endpoints API REST
-│   ├── config/
-│   │   └── database.php     # Configuración de base de datos
-│   └── schema.sql           # Esquema de base de datos
-└── assets/
-    └── images/              # Imágenes y recursos estáticos
+│       ├── dashboard.js
+│       ├── nuevo-registro.js
+│       ├── registro-actividades.js
+│       └── por-caducar.js
+├── php/                       # 📦 LEGACY (solo para schema.sql)
+│   └── schema.sql            # Esquema SQLite + datos demo
+├── .env.example              # Config template Turso
+├── .env                      # Tu config local (gitignored)
+└── README.md
 ```
 
-## Instalación
+---
 
-### Requisitos
+## 🚀 Inicio Rápido
 
-- PHP 8.0+
-- MySQL 5.7+ / MariaDB 10.3+
-- Servidor web (Apache/Nginx) o PHP built-in server
-
-### 1. Configurar Base de Datos
-
+### 1. Crear base de datos en Turso
 ```bash
-# Crear la base de datos y tablas
-mysql -u root -p < php/schema.sql
+# Instalar CLI Turso
+curl -sSfL https://get.tur.so/install.sh | bash
+
+# Login y crear DB
+turso auth login
+turso db create inventario-ganadero
+
+# Obtener credenciales
+turso db show inventario-ganadero --url
+turso db tokens create inventario-ganadero
 ```
 
-### 2. Configurar Conexión
+### 2. Configurar proyecto
+```bash
+cd sistema-de-inventario
+chmod +x start.sh
+cp .env.example .env
+```
 
-Edita `php/config/database.php` o crea un archivo `.env` en la raíz:
-
+Edita `.env` con tus credenciales:
 ```env
-DB_HOST=localhost
-DB_NAME=inventario_medicamentos
-DB_USER=tu_usuario
-DB_PASS=tu_password
+TURSO_DATABASE_URL=libsql://inventario-ganadero-tu-org.turso.io
+TURSO_AUTH_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+APP_PORT=8000
 ```
 
-### 3. Iniciar Servidor
-
-**Opción A: PHP Built-in Server (Desarrollo)**
+### 3. Inicializar schema y arrancar
 ```bash
-php -S localhost:8000
+# Requiere Node.js para --init-db
+./start.sh --init-db
+
+# Arrancar servidor estático (usa Python3, Node o PHP automáticamente)
+./start.sh
+# → http://localhost:8000 (redirige a login.html)
 ```
 
-**Opción B: Apache/Nginx**
-Configura el DocumentRoot apuntando a la carpeta del proyecto.
+### 4. Credenciales demo
+| Rol | Email | Password |
+|-----|-------|----------|
+| Admin | admin@ganadero.com | admin123 |
+| Veterinario | vet@ganadero.com | vet123 |
+| Técnico | tecnico@ganadero.com | tecnico123 |
 
-### 4. Acceder
+---
 
-Abre `http://localhost:8000` en tu navegador.
+## ☁️ Despliegue en Producción (Vercel/Netlify/GitHub Pages)
 
-## API Endpoints
+### Opción A: Vercel (Recomendado)
+```bash
+# 1. Push a GitHub
+git add . && git commit -m "deploy" && git push
 
-### Medicamentos
-- `GET /php/api/index.php?action=medicamentos` - Listar (con paginación, búsqueda, filtro por tipo)
-- `GET /php/api/index.php?action=medicamentos&id=1` - Obtener uno
-- `POST /php/api/index.php?action=medicamentos` - Crear
-- `PUT /php/api/index.php?action=medicamentos&id=1` - Actualizar
-- `DELETE /php/api/index.php?action=medicamentos&id=1` - Eliminar
+# 2. Importar en Vercel
+# - Framework: Other
+# - Build Command: (vacío)
+# - Output Directory: (vacío)
+# - Install Command: (vacío)
 
-### Actividades
-- `GET /php/api/index.php?action=actividades` - Listar
-- `GET /php/api/index.php?action=actividades&id=1` - Obtener una
-- `POST /php/api/index.php?action=actividades` - Crear
+# 3. Variables de entorno en Vercel Dashboard:
+TURSO_DATABASE_URL=libsql://...
+TURSO_AUTH_TOKEN=...
+```
 
-### Estadísticas
-- `GET /php/api/index.php?action=stats` - Obtener estadísticas del dashboard
+### Opción B: Netlify
+```bash
+# Conectar repo en Netlify
+# Build command: (vacío)
+# Publish directory: .
+# Environment variables: TURSO_DATABASE_URL, TURSO_AUTH_TOKEN
+```
 
-## Funcionalidades Principales
+### Opción C: GitHub Pages
+```bash
+# Settings > Pages > Deploy from branch > main > / (root)
+# Agregar variables en Settings > Secrets > Actions (para workflow)
+```
 
-### Dashboard
-- 4 tarjetas de estadísticas: Total Medicamentos, Total Vacunas, Próximos a Caducar, Caducados
-- Actividad reciente (últimas 5)
-- Alertas de caducidad (próximos 90 días)
+> **Nota**: Al ser 100% estático, funciona en **cualquier hosting estático** (S3, Cloudflare Pages, Firebase Hosting, Surge, etc.)
 
-### Nuevo Registro
-- Formulario validado (cliente y servidor)
-- Campos: Nombre, Tipo (Medicamento/Vacuna), Lote, Laboratorio, Presentación, Concentración, Cantidad, Unidad, Fechas, Ubicación, Temperatura, Observaciones
-- Checkboxes: Requiere receta, Medicamento controlado
+---
 
-### Registro de Actividades
-- Tabla con paginación
-- Filtros: Búsqueda texto, Tipo de actividad, Rango de fechas
-- Modal para nueva actividad
-- Modal de detalle
+## 🔧 Comandos del Lanzador
 
-### Medicamentos por Caducar
-- 4 tarjetas de resumen: Caducados, Críticos (≤30 días), Advertencia (31-90), Vigentes (>90)
-- Tabla con paginación y ordenación por fecha
-- Filtros: Búsqueda, Rango de días (0, 30, 90, 180, Todos), Estado
-- Exportación a CSV
-- Acciones por fila: Baja, Generar Alerta, Registrar Salida, Ajustar Stock
+```bash
+./start.sh           # Servidor estático auto-detectado (Python/Node/PHP)
+./start.sh --init-db # Inicializar schema en Turso (requiere Node.js)
+./start.sh --stop    # Detener servidor
+./start.sh --logs    # Ver logs
+./start.sh --status  # Estado del servidor
+```
 
-## Responsive
+### Servidores soportados (auto-detectados por prioridad):
+1. **Python 3** (`python3 -m http.server`) — incluido en Linux/macOS
+2. **Node.js + serve** (`npx serve`) — `npm install -g serve` o `npx`
+3. **PHP** (`php -S`) — fallback
 
-- Sidebar colapsable en móviles (< 1024px)
+---
+
+## 📡 Uso del TursoClient (js/lib/turso-client.js)
+
+```javascript
+const db = new TursoClient(
+    'libsql://tu-db-tu-org.turso.io',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+);
+
+// Query simple
+const vacunas = await db.query(
+    "SELECT * FROM medicamentos WHERE tipo = ?", 
+    ['vacuna']
+);
+
+// Fetch one
+const med = await db.fetch(
+    "SELECT * FROM medicamentos WHERE id = ?", 
+    [1]
+);
+
+// Insert con last_insert_rowid
+const id = await db.insert(
+    "INSERT INTO medicamentos (nombre, tipo) VALUES (?, ?)", 
+    ['Nuevo', 'medicamento']
+);
+
+// Transacción atómica
+await db.transaction([
+    { sql: 'INSERT INTO actividades ...', args: [...] },
+    { sql: 'UPDATE medicamentos SET cantidad = cantidad - ? WHERE id = ?', args: [5, 1] }
+]);
+
+// Pipeline (batch HTTP único)
+const results = await db.batch([
+    { sql: 'SELECT * FROM medicamentos', args: [] },
+    { sql: 'SELECT * FROM actividades', args: [] }
+]);
+
+// Prepared statements (PDO-like)
+const stmt = db.prepare('SELECT * FROM medicamentos WHERE tipo = ?');
+await stmt.execute(['vacuna']);
+const vacunas = await stmt.fetchAll();
+```
+
+---
+
+## 🗄️ Schema SQLite (Turso) - php/schema.sql
+
+```sql
+-- Diferencias clave MySQL → SQLite:
+-- AUTO_INCREMENT → INTEGER PRIMARY KEY AUTOINCREMENT
+-- ENUM → CHECK (col IN (...))
+-- NOW() → datetime('now')
+-- ON UPDATE CURRENT_TIMESTAMP → Trigger AFTER UPDATE
+-- date_sub/now → date('now', '-30 days')
+```
+
+Ver `php/schema.sql` para esquema completo con:
+- Tabla `medicamentos` (10 productos veterinarios demo)
+- Tabla `actividades` (historial)
+- Tabla `usuarios` (3 usuarios demo con bcrypt)
+- Vista `vista_medicamentos_caducidad`
+- Triggers para `updated_at`
+
+---
+
+## 🔐 Seguridad
+
+- ✅ Passwords: `bcryptjs` (cost 12) en navegador via CDN
+- ✅ Sesiones: localStorage con expiración (2h) + verificación client-side
+- ✅ Turso: HTTPS/TLS nativo + Auth Token en header
+- ✅ Prepared statements vía batch HTTP (previene inyección)
+- ✅ CORS: Configurado en Turso Dashboard
+- ✅ Sanitización: `textContent` / template literals escapados
+
+---
+
+## 📱 Responsive
+
+- Sidebar colapsable (< 1024px)
 - Tablas con scroll horizontal
 - Formularios adaptables
 - Modales responsivos
+- Login centrado mobile-first
 
-## Licencia
+---
+
+## 🗺️ Roadmap / Próximos Pasos
+
+- [ ] **PWA** (Service Worker, offline, installable)
+- [ ] **Notificaciones push** (caducidad próxima via Web Push API)
+- [ ] **Sync offline** (IndexedDB + background sync)
+- [ ] **Reportes PDF** (jsPDF / pdfmake)
+- [ ] **Multi-tenancy** (varias fincas/establecimientos)
+- [ ] **Tests E2E** (Playwright/Cypress)
+- [ ] **Storybook** para componentes UI
+
+---
+
+## 📄 Licencia
 
 MIT

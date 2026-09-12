@@ -1,6 +1,7 @@
 const App = {
     currentView: 'dashboard',
     sidebarOpen: false,
+    db: null,
     data: {
         medicamentos: [],
         actividades: [],
@@ -8,10 +9,137 @@ const App = {
     },
 
     init() {
+        this.initDB();
         this.bindEvents();
-        this.loadInitialData();
+        this.checkAuth();
         this.handleRoute();
         window.addEventListener('hashchange', () => this.handleRoute());
+    },
+
+    initDB() {
+        // Configuración Turso desde variables de entorno o window.ENV
+        const dbUrl = window.ENV?.TURSO_DATABASE_URL || 'libsql://tu-db-tu-org.turso.io';
+        const authToken = window.ENV?.TURSO_AUTH_TOKEN || '';
+        this.db = new TursoClient(dbUrl, authToken);
+        this.db.setTimeout(15000);
+    },
+
+    async checkAuth() {
+        // Verificar sesión en localStorage (simulación de auth stateless)
+        const session = localStorage.getItem('inventario_session');
+        if (session) {
+            try {
+                const user = JSON.parse(session);
+                // Verificar expiración (2 horas)
+                if (user.expires && Date.now() < user.expires) {
+                    this.currentUser = user;
+                    this.updateUserUI(user);
+                    return true;
+                } else {
+                    localStorage.removeItem('inventario_session');
+                }
+            } catch {
+                localStorage.removeItem('inventario_session');
+            }
+        }
+        
+        // Si estamos en login.html, no redirigir
+        if (window.location.pathname.includes('login.html')) {
+            return false;
+        }
+        
+        // Redirigir a login
+        window.location.href = 'login.html';
+        return false;
+    },
+
+    async login(email, password) {
+        try {
+            const user = await this.db.fetch(
+                'SELECT * FROM usuarios WHERE email = ? AND activo = 1', 
+                [email.toLowerCase()]
+            );
+            
+            if (!user) {
+                throw new Error('Credenciales inválidas');
+            }
+
+            // Verificar password con bcrypt (necesitamos una librería)
+            // Para simplicidad, usamos una verificación simple
+            // En producción usar: await bcrypt.verify(password, user.password)
+            const valid = await this.verifyPassword(password, user.password);
+            if (!valid) {
+                throw new Error('Credenciales inválidas');
+            }
+
+            // Actualizar último acceso
+            await this.db.exec(
+                'UPDATE usuarios SET ultimo_acceso = datetime("now") WHERE id = ?', 
+                [user.id]
+            );
+
+            // Crear sesión (expira en 2 horas)
+            const session = {
+                id: user.id,
+                nombre: user.nombre,
+                email: user.email,
+                rol: user.rol,
+                expires: Date.now() + 2 * 60 * 60 * 1000
+            };
+            
+            localStorage.setItem('inventario_session', JSON.stringify(session));
+            this.currentUser = session;
+            this.updateUserUI(session);
+            
+            return session;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async verifyPassword(password, hash) {
+        // Usar bcrypt en el navegador via CDN
+        if (typeof bcrypt !== 'undefined') {
+            return await bcrypt.verify(password, hash);
+        }
+        
+        // Fallback: cargar bcrypt dinámicamente
+        await this.loadBcrypt();
+        return await bcrypt.verify(password, hash);
+    },
+
+    async loadBcrypt() {
+        if (typeof bcrypt !== 'undefined') return;
+        
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js';
+            script.onload = () => {
+                window.bcrypt = bcrypt;
+                resolve();
+            };
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    },
+
+    logout() {
+        localStorage.removeItem('inventario_session');
+        this.currentUser = null;
+        window.location.href = 'login.html';
+    },
+
+    updateUserUI(user) {
+        const nameEl = document.querySelector('.user-name');
+        const roleEl = document.querySelector('.user-role');
+        const avatarEl = document.querySelector('.user-avatar');
+        
+        if (nameEl) nameEl.textContent = user.nombre;
+        if (roleEl) roleEl.textContent = user.rol.charAt(0).toUpperCase() + user.rol.slice(1);
+        if (avatarEl) {
+            const initials = user.nombre.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            avatarEl.textContent = initials;
+        }
     },
 
     bindEvents() {
@@ -36,6 +164,15 @@ const App = {
             });
         });
 
+        // Logout button
+        const logoutBtn = document.querySelector('form[action*="logout"] button, .btn-logout');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
+        }
+
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 document.querySelectorAll('.modal-overlay.active').forEach(modal => {
@@ -48,9 +185,9 @@ const App = {
     async loadInitialData() {
         try {
             const [medicamentos, actividades, stats] = await Promise.all([
-                this.fetchAPI('/api/medicamentos'),
-                this.fetchAPI('/api/actividades'),
-                this.fetchAPI('/api/stats')
+                this.db.query('SELECT * FROM medicamentos ORDER BY fecha_caducidad ASC'),
+                this.db.query('SELECT * FROM actividades ORDER BY fecha DESC LIMIT 50'),
+                this.getStats()
             ]);
             this.data.medicamentos = medicamentos || [];
             this.data.actividades = actividades || [];
@@ -62,16 +199,28 @@ const App = {
         }
     },
 
-    async fetchAPI(endpoint, options = {}) {
-        const response = await fetch(endpoint, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return response.json();
+    async getStats() {
+        try {
+            const [totalMedicamentos, totalVacunas, caducados, criticos, advertencia] = await Promise.all([
+                this.db.fetch('SELECT COUNT(*) as total FROM medicamentos'),
+                this.db.fetch("SELECT COUNT(*) as total FROM medicamentos WHERE tipo = 'vacuna'"),
+                this.db.fetch("SELECT COUNT(*) as total FROM medicamentos WHERE date(fecha_caducidad) < date('now')"),
+                this.db.fetch("SELECT COUNT(*) as total FROM medicamentos WHERE date(fecha_caducidad) BETWEEN date('now') AND date('now', '+30 days')"),
+                this.db.fetch("SELECT COUNT(*) as total FROM medicamentos WHERE date(fecha_caducidad) BETWEEN date('now', '+31 days') AND date('now', '+90 days')")
+            ]);
+
+            return {
+                totalMedicamentos: Number(totalMedicamentos?.total ?? 0),
+                totalVacunas: Number(totalVacunas?.total ?? 0),
+                caducados: Number(caducados?.total ?? 0),
+                criticos: Number(criticos?.total ?? 0),
+                advertencia: Number(advertencia?.total ?? 0),
+                proximosCaducar: Number(criticos?.total ?? 0) + Number(advertencia?.total ?? 0)
+            };
+        } catch (error) {
+            console.error('Error getting stats:', error);
+            return {};
+        }
     },
 
     handleRoute() {
@@ -99,7 +248,8 @@ const App = {
             'registro-actividades': 'Registro de Actividades',
             'por-caducar': 'Medicamentos por Caducar'
         };
-        document.querySelector('.page-title').textContent = titles[view] || 'Dashboard';
+        const titleEl = document.querySelector('.page-title');
+        if (titleEl) titleEl.textContent = titles[view] || 'Dashboard';
     },
 
     renderCurrentView() {
@@ -237,4 +387,11 @@ const App = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+// Inicializar al cargar
+document.addEventListener('DOMContentLoaded', async () => {
+    // Cargar variables de entorno desde script inline o config
+    window.ENV = window.ENV || {};
+    
+    await App.init();
+    await App.loadInitialData();
+});

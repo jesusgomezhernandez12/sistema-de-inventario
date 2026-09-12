@@ -19,7 +19,7 @@ const RegistroActividadesView = {
                         <form id="filtros-form" class="form-row" style="gap: 1rem; align-items: end;">
                             <div class="form-group" style="flex: 1; min-width: 200px;">
                                 <label class="form-label">Buscar</label>
-                                <input type="text" class="form-input" name="busqueda" id="busqueda" placeholder="Buscar por descripción, usuario, lote..." value="${this.filters.busqueda}">
+                                <input type="text" class="form-input" name="busqueda" id="busqueda" placeholder="Buscar por descripción, usuario, medicamento..." value="${this.filters.busqueda}">
                             </div>
                             <div class="form-group" style="min-width: 180px;">
                                 <label class="form-label">Tipo de Actividad</label>
@@ -65,7 +65,6 @@ const RegistroActividadesView = {
                                             <th>Tipo</th>
                                             <th>Descripción</th>
                                             <th>Medicamento</th>
-                                            <th>Lote</th>
                                             <th>Cantidad</th>
                                             <th>Usuario</th>
                                             <th>Acciones</th>
@@ -112,7 +111,7 @@ const RegistroActividadesView = {
                                     <label class="form-label">Medicamento/Vacuna <span class="required">*</span></label>
                                     <select class="form-input form-select" name="medicamentoId" id="actividad-medicamento" required>
                                         <option value="">Seleccionar medicamento</option>
-                                        ${data.medicamentos.map(m => `<option value="${m.id}">${m.nombre} (${m.lote})</option>`).join('')}
+                                        ${data.medicamentos.map(m => `<option value="${m.id}">${m.nombre} (${m.presentacion} ${m.concentracion})</option>`).join('')}
                                     </select>
                                     <div class="form-error" id="actividad-medicamento-error"></div>
                                 </div>
@@ -168,8 +167,7 @@ const RegistroActividadesView = {
                 const search = this.filters.busqueda.toLowerCase();
                 const match = act.descripcion.toLowerCase().includes(search) ||
                              act.usuario.toLowerCase().includes(search) ||
-                             (act.medicamento?.toLowerCase().includes(search)) ||
-                             (act.lote?.toLowerCase().includes(search));
+                             (act.medicamento?.toLowerCase().includes(search));
                 if (!match) return false;
             }
             if (this.filters.fechaInicio) {
@@ -224,7 +222,6 @@ const RegistroActividadesView = {
                 <td><span class="badge ${tipo.class}"><i class="fas ${tipo.icon} mr-1"></i>${tipo.label}</span></td>
                 <td>${act.descripcion}</td>
                 <td>${act.medicamento || '-'}</td>
-                <td>${act.lote || '-'}</td>
                 <td>${act.cantidad || '-'}</td>
                 <td>${act.usuario || '-'}</td>
                 <td>
@@ -316,7 +313,7 @@ const RegistroActividadesView = {
             const medicamento = app.data.medicamentos.find(m => m.id == data.medicamentoId);
             if (medicamento) {
                 data.medicamento = medicamento.nombre;
-                data.lote = medicamento.lote;
+                data.lote = '';
             }
             data.fecha = new Date(data.fecha).toISOString();
 
@@ -375,8 +372,6 @@ const RegistroActividadesView = {
                     <dd class="text-gray-900">${act.descripcion}</dd>
                     <dt class="font-medium text-gray-600">Medicamento:</dt>
                     <dd class="text-gray-900">${act.medicamento || '-'}</dd>
-                    <dt class="font-medium text-gray-600">Lote:</dt>
-                    <dd class="text-gray-900">${act.lote || '-'}</dd>
                     <dt class="font-medium text-gray-600">Cantidad:</dt>
                     <dd class="text-gray-900">${act.cantidad || '-'}</dd>
                     <dt class="font-medium text-gray-600">Usuario:</dt>

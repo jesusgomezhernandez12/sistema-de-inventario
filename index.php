@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sistema de Inventario Digital de Medicamentos y Vacunas">
-    <title>Sistema de Inventario - Medicamentos y Vacunas</title>
+    <meta name="description" content="Sistema de Inventario Digital de Medicamentos y Vacunas para Ganado">
+    <title>Inventario Ganadero - Medicamentos y Vacunas</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -17,8 +17,8 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-logo">
-                    <i class="fas fa-prescription-bottle-alt"></i>
-                    <span>InventarioMed</span>
+                    <i class="fas fa-cow"></i>
+                    <span>InventarioGanadero</span>
                 </div>
             </div>
             
@@ -51,9 +51,9 @@
 
             <div class="sidebar-footer">
                 <div class="user-info">
-                    <div class="user-avatar">FA</div>
+                    <div class="user-avatar">VG</div>
                     <div class="user-details">
-                        <div class="user-name">Farmacéutico Admin</div>
+                        <div class="user-name">Veterinario Admin</div>
                         <div class="user-role">Administrador</div>
                     </div>
                 </div>
@@ -73,7 +73,7 @@
                 <div class="top-bar-right">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Buscar medicamentos, lotes..." id="global-search">
+                        <input type="text" placeholder="Buscar medicamentos, presentaciones..." id="global-search">
                     </div>
                     <button class="notifications" id="notifications-btn" aria-label="Notificaciones">
                         <i class="fas fa-bell"></i>

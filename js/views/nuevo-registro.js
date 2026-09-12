@@ -4,14 +4,14 @@ const NuevoRegistroView = {
             <div class="fade-in">
                 <div class="card" style="max-width: 800px;">
                     <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-plus-circle mr-2"></i>Nuevo Registro de Medicamento/Vacuna</h3>
+                        <h3 class="card-title"><i class="fas fa-plus-circle mr-2"></i>Nuevo Registro de Medicamento/Vacuna para Ganado</h3>
                     </div>
                     <div class="card-body">
                         <form id="registro-form" novalidate>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label class="form-label">Nombre <span class="required">*</span></label>
-                                    <input type="text" class="form-input" name="nombre" id="nombre" placeholder="Ej: Paracetamol 500mg" required>
+                                    <input type="text" class="form-input" name="nombre" id="nombre" placeholder="Ej: Ivermectina 1%, Vacuna Aftosa" required>
                                     <div class="form-error" id="nombre-error"></div>
                                 </div>
                                 <div class="form-group">
@@ -27,25 +27,12 @@ const NuevoRegistroView = {
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label class="form-label">Lote <span class="required">*</span></label>
-                                    <input type="text" class="form-input" name="lote" id="lote" placeholder="Ej: LOT-2024-001" required>
-                                    <div class="form-error" id="lote-error"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Laboratorio <span class="required">*</span></label>
-                                    <input type="text" class="form-input" name="laboratorio" id="laboratorio" placeholder="Ej: Laboratorios Pfizer" required>
-                                    <div class="form-error" id="laboratorio-error"></div>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
                                     <label class="form-label">Presentación</label>
-                                    <input type="text" class="form-input" name="presentacion" id="presentacion" placeholder="Ej: Caja x 20 tabletas">
+                                    <input type="text" class="form-input" name="presentacion" id="presentacion" placeholder="Ej: Frasco 100ml, Caja x 50ml">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Concentración</label>
-                                    <input type="text" class="form-input" name="concentracion" id="concentracion" placeholder="Ej: 500mg, 10ml, etc.">
+                                    <input type="text" class="form-input" name="concentracion" id="concentracion" placeholder="Ej: 1%, 10%, 50mg/ml">
                                 </div>
                             </div>
 
@@ -58,11 +45,14 @@ const NuevoRegistroView = {
                                 <div class="form-group">
                                     <label class="form-label">Unidad de Medida</label>
                                     <select class="form-input form-select" name="unidad" id="unidad">
-                                        <option value="unidades">Unidades</option>
-                                        <option value="cajas">Cajas</option>
                                         <option value="frascos">Frascos</option>
+                                        <option value="frascos_100ml">Frascos 100ml</option>
+                                        <option value="frascos_500ml">Frascos 500ml</option>
+                                        <option value="frascos_1l">Frascos 1L</option>
+                                        <option value="dosis">Dosis</option>
+                                        <option value="cajas">Cajas</option>
                                         <option value="ampollas">Ampollas</option>
-                                        <option value="blister">Blister</option>
+                                        <option value="bolsas">Bolsas</option>
                                     </select>
                                 </div>
                             </div>
@@ -79,25 +69,14 @@ const NuevoRegistroView = {
                                 </div>
                             </div>
 
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Ubicación/Almacén</label>
-                                    <input type="text" class="form-input" name="ubicacion" id="ubicacion" placeholder="Ej: Almacén A - Estante 3">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Temperatura de Almacenamiento</label>
-                                    <input type="text" class="form-input" name="temperatura" id="temperatura" placeholder="Ej: 2-8°C, Ambiente">
-                                </div>
-                            </div>
-
                             <div class="form-group">
                                 <label class="form-label">Observaciones</label>
-                                <textarea class="form-input form-textarea" name="observaciones" id="observaciones" placeholder="Información adicional..."></textarea>
+                                <textarea class="form-input form-textarea" name="observaciones" id="observaciones" placeholder="Información adicional: vía de administración, especies, tiempo de retiro..."></textarea>
                             </div>
 
                             <div class="form-check" style="margin-bottom: 1.5rem;">
                                 <input type="checkbox" class="form-check-input" name="requiereReceta" id="requiereReceta">
-                                <label class="form-check-label" for="requiereReceta">Requiere receta médica</label>
+                                <label class="form-check-label" for="requiereReceta">Requiere receta veterinaria</label>
                             </div>
 
                             <div class="form-check" style="margin-bottom: 1.5rem;">

@@ -14,7 +14,7 @@ const DashboardView = {
             <div class="fade-in">
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-icon blue"><i class="fas fa-pills"></i></div>
+                        <div class="stat-icon blue"><i class="fas fa-cow"></i></div>
                         <div class="stat-info">
                             <div class="stat-value">${totalMedicamentos}</div>
                             <div class="stat-label">Total Medicamentos</div>
@@ -136,10 +136,10 @@ const DashboardView = {
                     return `
                         <div class="activity-item">
                             <div class="activity-icon ${status.class === 'critical' ? 'red' : status.class === 'warning' ? 'yellow' : 'blue'}">
-                                <i class="fas fa-pills"></i>
+                                <i class="fas fa-cow"></i>
                             </div>
                             <div class="activity-content">
-                                <div class="activity-title">${item.nombre} (${item.lote})</div>
+                                <div class="activity-title">${item.nombre} (${item.presentacion} ${item.concentracion})</div>
                                 <div class="activity-meta">
                                     Caduca: ${App.formatDate(item.fechaCaducidad)} 
                                     <span class="badge badge-${status.class}">${status.label}</span>

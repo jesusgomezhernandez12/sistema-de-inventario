@@ -61,7 +61,7 @@ function handleMedicamentos($db, $method) {
                 $params = [];
                 
                 if ($search) {
-                    $where .= ' AND (nombre LIKE ? OR lote LIKE ? OR laboratorio LIKE ?)';
+                    $where .= ' AND (nombre LIKE ? OR presentacion LIKE ? OR concentracion LIKE ?)';
                     $searchTerm = "%$search%";
                     $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
                 }
@@ -95,7 +95,7 @@ function handleMedicamentos($db, $method) {
 
         case 'POST':
             $input = json_decode(file_get_contents('php://input'), true);
-            $required = ['nombre', 'tipo', 'lote', 'laboratorio', 'cantidad', 'fecha_caducidad'];
+            $required = ['nombre', 'tipo', 'cantidad', 'fecha_caducidad'];
             
             foreach ($required as $field) {
                 if (empty($input[$field])) {
@@ -106,23 +106,19 @@ function handleMedicamentos($db, $method) {
             }
 
             $stmt = $db->prepare('
-                INSERT INTO medicamentos (nombre, tipo, lote, laboratorio, presentacion, concentracion, cantidad, unidad, fecha_caducidad, fecha_ingreso, ubicacion, temperatura, observaciones, requiere_receta, es_controlado, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                INSERT INTO medicamentos (nombre, tipo, presentacion, concentracion, cantidad, unidad, fecha_caducidad, fecha_ingreso, observaciones, requiere_receta, es_controlado, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
             ');
             
             $stmt->execute([
                 $input['nombre'],
                 $input['tipo'],
-                $input['lote'],
-                $input['laboratorio'],
                 $input['presentacion'] ?? '',
                 $input['concentracion'] ?? '',
                 $input['cantidad'],
-                $input['unidad'] ?? 'unidades',
+                $input['unidad'] ?? 'frascos',
                 $input['fecha_caducidad'],
                 $input['fecha_ingreso'] ?? date('Y-m-d'),
-                $input['ubicacion'] ?? '',
-                $input['temperatura'] ?? '',
                 $input['observaciones'] ?? '',
                 $input['requiere_receta'] ?? false,
                 $input['es_controlado'] ?? false
@@ -146,7 +142,7 @@ function handleMedicamentos($db, $method) {
             
             $fields = [];
             $params = [];
-            $allowed = ['nombre', 'tipo', 'lote', 'laboratorio', 'presentacion', 'concentracion', 'cantidad', 'unidad', 'fecha_caducidad', 'ubicacion', 'temperatura', 'observaciones', 'requiere_receta', 'es_controlado'];
+            $allowed = ['nombre', 'tipo', 'presentacion', 'concentracion', 'cantidad', 'unidad', 'fecha_caducidad', 'observaciones', 'requiere_receta', 'es_controlado'];
             
             foreach ($allowed as $field) {
                 if (array_key_exists($field, $input)) {

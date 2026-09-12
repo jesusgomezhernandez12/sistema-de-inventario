@@ -34,18 +34,18 @@ check_env() {
 }
 
 check_server() {
-    # Preferir Python3, luego Node, luego PHP
-    if command -v python3 &> /dev/null; then
+    # PHP es necesario para ejecutar la API y las sesiones del backend
+    if command -v php &> /dev/null; then
+        SERVER_CMD="php -S"
+        SERVER_NAME="PHP"
+        return 0
+    elif command -v python3 &> /dev/null; then
         SERVER_CMD="python3 -m http.server"
         SERVER_NAME="Python"
         return 0
     elif command -v node &> /dev/null && command -v npx &> /dev/null; then
         SERVER_CMD="npx serve -l"
         SERVER_NAME="Node (serve)"
-        return 0
-    elif command -v php &> /dev/null; then
-        SERVER_CMD="php -S"
-        SERVER_NAME="PHP"
         return 0
     else
         err "Ningún servidor HTTP disponible. Instala Python3, Node.js o PHP."

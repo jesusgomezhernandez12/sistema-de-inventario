@@ -32,7 +32,7 @@ try {
             $_SESSION['user_nombre'] = $user['nombre'];
             $_SESSION['user_email'] = $user['email'];
             $_SESSION['user_rol'] = $user['rol'];
-            tursoExecute('UPDATE usuarios SET ultimo_acceso = datetime("now") WHERE id = ?', [$user['id']]);
+            tursoExecute("UPDATE usuarios SET ultimo_acceso = datetime('now') WHERE id = ?", [$user['id']]);
 
             echo json_encode(['authenticated' => true, 'user' => currentUser()]);
             break;
@@ -105,9 +105,9 @@ function requestPasswordReset(): void
         return;
     }
 
-    tursoExecute('UPDATE password_reset_tokens SET used_at = datetime("now") WHERE usuario_id = ? AND used_at IS NULL', [$user['id']]);
+    tursoExecute("UPDATE password_reset_tokens SET used_at = datetime('now') WHERE usuario_id = ? AND used_at IS NULL", [$user['id']]);
     $token = bin2hex(random_bytes(32));
-    tursoExecute('INSERT INTO password_reset_tokens (usuario_id, token_hash, expires_at) VALUES (?, ?, datetime("now", "+1 hour"))', [$user['id'], hash('sha256', $token)]);
+    tursoExecute("INSERT INTO password_reset_tokens (usuario_id, token_hash, expires_at) VALUES (?, ?, datetime('now', '+1 hour'))", [$user['id'], hash('sha256', $token)]);
 
     $appUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
     $link = $appUrl . '/restablecer.html?token=' . urlencode($token);
@@ -116,11 +116,70 @@ function requestPasswordReset(): void
     $from = $_ENV['MAIL_FROM'] ?? 'no-reply@inventario-ganadero.local';
     $headers = "From: {$from}\r\nContent-Type: text/plain; charset=UTF-8\r\n";
 
-    if (!mail($user['email'], $subject, $body, $headers)) {
+    if (!sendPasswordResetEmail($user['email'], $subject, $body, $headers)) {
         error_log('No se pudo enviar el correo de recuperación a ' . $user['email']);
     }
 
     echo json_encode(['success' => true, 'message' => $message]);
+}
+
+function sendPasswordResetEmail(string $recipient, string $subject, string $body, string $headers): bool
+{
+    $host = $_ENV['SMTP_HOST'] ?? '';
+    if ($host === '') {
+        return mail($recipient, $subject, $body, $headers);
+    }
+
+    $port = (int)($_ENV['SMTP_PORT'] ?? 587);
+    $username = $_ENV['SMTP_USER'] ?? '';
+    $password = $_ENV['SMTP_PASS'] ?? '';
+    $secure = strtolower($_ENV['SMTP_SECURE'] ?? 'tls');
+    $transport = $secure === 'ssl' ? "ssl://{$host}:{$port}" : "tcp://{$host}:{$port}";
+    $socket = @stream_socket_client($transport, $errorCode, $errorMessage, 15);
+    if (!$socket) {
+        error_log("SMTP connection failed: {$errorCode} {$errorMessage}");
+        return false;
+    }
+
+    stream_set_timeout($socket, 15);
+    $read = static function () use ($socket): string {
+        $response = '';
+        while (($line = fgets($socket)) !== false) {
+            $response .= $line;
+            if (isset($line[3]) && $line[3] === ' ') break;
+        }
+        return $response;
+    };
+    $command = static function (string $command, string $expected) use ($socket, $read): bool {
+        fwrite($socket, $command . "\r\n");
+        return str_starts_with($read(), $expected);
+    };
+
+    if (!str_starts_with($read(), '220') || !$command('EHLO localhost', '250')) {
+        fclose($socket);
+        return false;
+    }
+    if ($secure === 'tls') {
+        if (!$command('STARTTLS', '220') || !stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) || !$command('EHLO localhost', '250')) {
+            fclose($socket);
+            return false;
+        }
+    }
+    if ($username !== '' && (!$command('AUTH LOGIN', '334') || !$command(base64_encode($username), '334') || !$command(base64_encode($password), '235'))) {
+        fclose($socket);
+        return false;
+    }
+
+    $from = $_ENV['MAIL_FROM'] ?? $username;
+    $sender = preg_replace('/^From:\s*/i', '', explode("\r\n", $headers)[0] ?? $from);
+    $message = "Subject: {$subject}\r\n{$headers}\r\n{$body}\r\n.";
+    $success = $command("MAIL FROM:<{$sender}>", '250')
+        && $command("RCPT TO:<{$recipient}>", '250')
+        && $command('DATA', '354')
+        && $command($message, '250');
+    $command('QUIT', '221');
+    fclose($socket);
+    return $success;
 }
 
 function resetPassword(): void
@@ -141,7 +200,7 @@ function resetPassword(): void
     }
 
     $reset = tursoQuery(
-        'SELECT usuario_id FROM password_reset_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime("now")',
+        "SELECT usuario_id FROM password_reset_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')",
         [hash('sha256', $token)]
     )[0] ?? null;
     if (!$reset) {
@@ -150,7 +209,7 @@ function resetPassword(): void
         return;
     }
 
-    tursoExecute('UPDATE usuarios SET password = ?, updated_at = datetime("now") WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), $reset['usuario_id']]);
-    tursoExecute('UPDATE password_reset_tokens SET used_at = datetime("now") WHERE token_hash = ?', [hash('sha256', $token)]);
+    tursoExecute("UPDATE usuarios SET password = ?, updated_at = datetime('now') WHERE id = ?", [password_hash($password, PASSWORD_DEFAULT), $reset['usuario_id']]);
+    tursoExecute("UPDATE password_reset_tokens SET used_at = datetime('now') WHERE token_hash = ?", [hash('sha256', $token)]);
     echo json_encode(['success' => true]);
 }

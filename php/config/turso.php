@@ -75,6 +75,11 @@ function tursoRequest(array $requests): array
     if (isset($data['error'])) {
         throw new RuntimeException('Turso rechazó la solicitud');
     }
+    foreach ($data['results'] ?? [] as $result) {
+        if (($result['type'] ?? '') === 'error') {
+            throw new RuntimeException('Turso rechazó la sentencia');
+        }
+    }
 
     return $data;
 }

@@ -77,6 +77,12 @@ function handleMedicamentos(string $method, array $input): void
             [$input['nombre'], $input['tipo'], $input['presentacion'] ?? '', $input['concentracion'] ?? '', (int)$input['cantidad'], $input['unidad'] ?? 'frascos', $input['fecha_caducidad'], $input['fecha_ingreso'] ?? date('Y-m-d'), $input['observaciones'] ?? '', (int)($input['requiere_receta'] ?? 0), (int)($input['es_controlado'] ?? 0)]
         );
         $id = $result['last_insert_rowid'] ?? null;
+        if ($id !== null) {
+            tursoExecute(
+                "INSERT INTO actividades (tipo, medicamento_id, medicamento, cantidad, descripcion, fecha, usuario) VALUES ('entrada', ?, ?, ?, ?, datetime('now'), ?)",
+                [$id, $input['nombre'], (int)$input['cantidad'], "Alta de inventario: {$input['nombre']}", $_SESSION['user_nombre']]
+            );
+        }
         $row = $id === null ? null : (tursoQuery('SELECT * FROM medicamentos WHERE id = ?', [$id])[0] ?? null);
         echo json_encode($row);
         return;
@@ -152,9 +158,9 @@ function handleOperacion(array $input): void
         $descripcion = "Ajuste de inventario: {$medicamento['nombre']}";
     }
 
-    tursoExecute('UPDATE medicamentos SET cantidad = ?, updated_at = datetime("now") WHERE id = ?', [$nuevoStock, $medicamentoId]);
+    tursoExecute("UPDATE medicamentos SET cantidad = ?, updated_at = datetime('now') WHERE id = ?", [$nuevoStock, $medicamentoId]);
     tursoExecute(
-        'INSERT INTO actividades (tipo, medicamento_id, medicamento, cantidad, descripcion, fecha, usuario) VALUES (?, ?, ?, ?, ?, datetime("now"), ?)',
+        "INSERT INTO actividades (tipo, medicamento_id, medicamento, cantidad, descripcion, fecha, usuario) VALUES (?, ?, ?, ?, ?, datetime('now'), ?)",
         [$tipo, $medicamentoId, $medicamento['nombre'], $cantidad ?? $stockActual, $descripcion, $_SESSION['user_nombre']]
     );
 

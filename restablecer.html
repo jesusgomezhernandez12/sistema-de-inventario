@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restablecer contraseña - Inventario Ganadero</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .recovery-card { width: 100%; max-width: 420px; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border: 1px solid var(--gray-200); padding: 2rem; }
+        .recovery-card h1 { margin-bottom: .75rem; color: var(--gray-800); }
+        .recovery-card p { color: var(--gray-600); margin-bottom: 1.5rem; line-height: 1.5; }
+        .recovery-card .form-group { margin-bottom: 1.25rem; }
+        .recovery-card .form-label { display: block; margin-bottom: .5rem; font-weight: 500; }
+        .recovery-card .form-input { width: 100%; padding: .75rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius); }
+        .recovery-card .btn { width: 100%; margin-top: .5rem; }
+        .recovery-link { display: block; text-align: center; margin-top: 1.25rem; color: var(--primary); }
+        .alert { padding: .875rem 1rem; border-radius: var(--radius); margin-bottom: 1.25rem; }
+        .alert-danger { background: rgba(239, 68, 68, .1); color: #991b1b; }
+        .alert-success { background: rgba(34, 197, 94, .1); color: #166534; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <main class="recovery-card">
+            <h1>Nueva contraseña</h1>
+            <p>Elige una contraseña de al menos 8 caracteres para proteger tu cuenta.</p>
+            <div id="alert-container" aria-live="polite"></div>
+            <form id="reset-form">
+                <div class="form-group">
+                    <label class="form-label" for="password">Nueva contraseña</label>
+                    <input class="form-input" type="password" id="password" minlength="8" required autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password-confirmation">Repite la contraseña</label>
+                    <input class="form-input" type="password" id="password-confirmation" minlength="8" required autocomplete="new-password">
+                </div>
+                <button class="btn btn-primary" type="submit" id="submit-button">Guardar contraseña</button>
+            </form>
+            <a class="recovery-link" href="login.html">Volver al inicio de sesión</a>
+        </main>
+    </div>
+    <script>
+        const token = new URLSearchParams(window.location.search).get('token') || '';
+        const form = document.getElementById('reset-form');
+        const button = document.getElementById('submit-button');
+        const alerts = document.getElementById('alert-container');
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            alerts.innerHTML = '';
+            const password = document.getElementById('password').value;
+            const confirmation = document.getElementById('password-confirmation').value;
+            if (!token || password.length < 8 || password !== confirmation) {
+                alerts.innerHTML = '<div class="alert alert-danger">Revisa el enlace y confirma que las contraseñas coincidan.</div>';
+                return;
+            }
+            button.disabled = true;
+            try {
+                const response = await fetch('php/api/auth.php?action=reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, password })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'No se pudo cambiar la contraseña');
+                form.reset();
+                alerts.innerHTML = '<div class="alert alert-success">Contraseña actualizada. Ya puedes iniciar sesión.</div>';
+                setTimeout(() => { window.location.href = 'login.html'; }, 1800);
+            } catch (error) {
+                alerts.innerHTML = '<div class="alert alert-danger">' + error.message + '</div>';
+            } finally {
+                button.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

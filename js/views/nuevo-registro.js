@@ -25,6 +25,14 @@ const NuevoRegistroView = {
                                 </div>
                             </div>
 
+                            <div class="form-group">
+                                <label class="form-label" for="imagen">Imagen del producto</label>
+                                <input type="file" class="form-input" name="imagen" id="imagen" accept="image/jpeg,image/png,image/webp">
+                                <small class="form-help">JPG, PNG o WebP. Máximo 5 MB.</small>
+                                <div class="form-error" id="imagen-error"></div>
+                                <img id="imagen-preview" class="medicine-image-preview" alt="Vista previa de la imagen" hidden>
+                            </div>
+
                             <div class="form-row">
                                 <div class="form-group">
                                     <label class="form-label">Presentación</label>
@@ -117,6 +125,14 @@ const NuevoRegistroView = {
         if (fechaCaducidad) {
             fechaCaducidad.min = this.getToday();
         }
+
+        document.getElementById('imagen')?.addEventListener('change', event => {
+            const file = event.target.files[0];
+            const preview = document.getElementById('imagen-preview');
+            if (!file || !preview) return;
+            preview.src = URL.createObjectURL(file);
+            preview.hidden = false;
+        });
     },
 
     async handleSubmit(e, app) {
@@ -137,20 +153,24 @@ const NuevoRegistroView = {
             data.requiereReceta = formData.has('requiereReceta') ? 1 : 0;
             data.esControlado = formData.has('esControlado') ? 1 : 0;
             data.cantidad = parseInt(data.cantidad);
+            formData.set('requiere_receta', data.requiereReceta);
+            formData.set('es_controlado', data.esControlado);
+            formData.set('cantidad', data.cantidad);
+            formData.set('fecha_caducidad', data.fechaCaducidad);
+            formData.set('fecha_ingreso', data.fechaIngreso);
+            formData.delete('fechaCaducidad');
+            formData.delete('fechaIngreso');
+            formData.delete('requiereReceta');
+            formData.delete('esControlado');
 
             const nuevo = await app.apiRequest('index.php?action=medicamentos', {
                 method: 'POST',
-                body: JSON.stringify({
-                    ...data,
-                    fecha_caducidad: data.fechaCaducidad,
-                    fecha_ingreso: data.fechaIngreso,
-                    requiere_receta: data.requiereReceta,
-                    es_controlado: data.esControlado
-                })
+                body: formData
             });
 
             app.showAlert('Registro guardado exitosamente', 'success');
             app.data.medicamentos.unshift(app.normalizeRecord(nuevo));
+            app.persistCachedData();
             this.resetForm(form);
             app.renderCurrentView();
 

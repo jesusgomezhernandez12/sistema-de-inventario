@@ -141,7 +141,7 @@ const PorCaducarView = {
     },
 
     getExpiryItems(medicamentos) {
-        return medicamentos.map(m => {
+        return medicamentos.filter(m => Number(m.cantidad) > 0).map(m => {
             const days = App.daysUntilExpiry(m.fechaCaducidad);
             const status = App.getExpiryStatus(days);
             return { ...m, days, status };
@@ -216,17 +216,17 @@ const PorCaducarView = {
         return `
             <tr style="${item.days < 0 ? 'background: rgba(239, 68, 68, 0.03);' : ''}">
                 <td>
-                    <div style="font-weight: 500;">${item.nombre}</div>
-                    <div style="font-size: 0.75rem; color: var(--gray-500);">${item.presentacion || ''} ${item.concentracion || ''}</div>
+                    <div style="font-weight: 500;">${App.escapeHtml(item.nombre)}</div>
+                    <div style="font-size: 0.75rem; color: var(--gray-500);">${App.escapeHtml(item.presentacion || '')} ${App.escapeHtml(item.concentracion || '')}</div>
                 </td>
                 <td><span class="badge ${tipoClass}"><i class="fas ${tipoIcon} mr-1"></i>${tipoLabel}</span></td>
-                <td>${item.presentacion || '-'}</td>
-                <td>${item.concentracion || '-'}</td>
+                <td>${App.escapeHtml(item.presentacion || '-')}</td>
+                <td>${App.escapeHtml(item.concentracion || '-')}</td>
                 <td>${App.formatDate(item.fechaCaducidad)}</td>
                 <td>
                     <span class="expiry-days ${item.status.class}">${item.status.label}</span>
                 </td>
-                <td>${item.cantidad} ${item.unidad || 'frascos'}</td>
+                <td>${App.escapeHtml(item.cantidad)} ${App.escapeHtml(item.unidad || 'frascos')}</td>
                 <td>
                     <div class="expiry-actions">
                         <button class="btn btn-icon btn-secondary" data-action="acciones" data-id="${item.id}" title="Acciones">
@@ -300,8 +300,8 @@ const PorCaducarView = {
                             <i class="fas ${item.tipo === 'vacuna' ? 'fa-syringe' : 'fa-pills'}"></i>
                         </div>
                         <div>
-                            <div style="font-weight: 600;">${item.nombre}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-500);">${item.presentacion} ${item.concentracion} | ${App.formatDate(item.fechaCaducidad)}</div>
+                            <div style="font-weight: 600;">${App.escapeHtml(item.nombre)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">${App.escapeHtml(item.presentacion)} ${App.escapeHtml(item.concentracion)} | ${App.formatDate(item.fechaCaducidad)}</div>
                             <span class="expiry-days ${status.class}">${status.label}</span>
                         </div>
                     </div>
@@ -364,6 +364,7 @@ const PorCaducarView = {
                 });
                 updatedItem = app.normalizeRecord(operation.medicamento);
                 if (operation.actividad) app.data.actividades.unshift(app.normalizeRecord(operation.actividad));
+                app.persistCachedData();
                 app.data.medicamentos = app.data.medicamentos.map(current => current.id == id ? updatedItem : current);
             } else {
                 await app.apiRequest('index.php?action=actividades', {

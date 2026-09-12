@@ -100,28 +100,89 @@ const App = {
 
     async loadInitialData() {
         try {
+            const cached = JSON.parse(localStorage.getItem('inventario_bootstrap') || 'null');
+            const cacheIsFresh = cached?.cachedAt && Date.now() - cached.cachedAt < 5 * 60 * 1000;
+            if (cacheIsFresh && this.data.medicamentos.length > 0) {
+                this.loadActivitiesInBackground();
+                this.refreshInitialDataInBackground();
+                return;
+            }
+
             const initialData = await this.apiRequest('index.php?action=bootstrap');
             this.data.medicamentos = (initialData.medicamentos || []).map(item => this.normalizeRecord(item));
             this.data.actividades = [];
             this.data.stats = initialData.stats || {};
+            localStorage.setItem('inventario_bootstrap', JSON.stringify({ ...initialData, cachedAt: Date.now() }));
+            this.updateExpiryBadge();
             this.renderCurrentView();
 
-            this.apiRequest('index.php?action=actividades')
-                .then(actividades => {
-                    this.data.actividades = (actividades.data || []).map(item => this.normalizeRecord(item));
-                    this.renderCurrentView();
-                })
-                .catch(error => console.warn('No se pudo cargar el historial:', error));
+            this.loadActivitiesInBackground();
         } catch (error) {
             console.error('Error loading initial data:', error);
             this.showAlert('Error al cargar los datos iniciales', 'danger');
         }
     },
 
+    async refreshInitialDataInBackground() {
+        try {
+            const initialData = await this.apiRequest('index.php?action=bootstrap');
+            this.data.medicamentos = (initialData.medicamentos || []).map(item => this.normalizeRecord(item));
+            this.data.stats = initialData.stats || {};
+            localStorage.setItem('inventario_bootstrap', JSON.stringify({ ...initialData, cachedAt: Date.now() }));
+            this.updateExpiryBadge();
+            this.renderCurrentView();
+        } catch (error) {
+            console.warn('No se pudo actualizar el inventario en segundo plano:', error);
+        }
+    },
+
+    async loadActivitiesInBackground() {
+        try {
+            const actividades = await this.apiRequest('index.php?action=actividades');
+            this.data.actividades = (actividades.data || []).map(item => this.normalizeRecord(item));
+            this.renderCurrentView();
+        } catch (error) {
+            console.warn('No se pudo cargar el historial:', error);
+        }
+    },
+
+    loadCachedData() {
+        try {
+            const cached = JSON.parse(localStorage.getItem('inventario_bootstrap') || 'null');
+            if (!cached || !Array.isArray(cached.medicamentos)) return false;
+            this.data.medicamentos = cached.medicamentos.map(item => this.normalizeRecord(item));
+            this.data.stats = cached.stats || {};
+            this.updateExpiryBadge();
+            this.handleRoute();
+            return true;
+        } catch {
+            localStorage.removeItem('inventario_bootstrap');
+            return false;
+        }
+    },
+
+    persistCachedData() {
+        localStorage.setItem('inventario_bootstrap', JSON.stringify({
+            medicamentos: this.data.medicamentos,
+            stats: this.data.stats,
+            cachedAt: Date.now()
+        }));
+    },
+
+    updateExpiryBadge() {
+        const badge = document.getElementById('badge-caducar');
+        const count = Number(this.data.stats.proximosCaducar || 0);
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'inline-flex' : 'none';
+        }
+    },
+
     async apiRequest(endpoint, options = {}) {
+        const isFormData = options.body instanceof FormData;
         const response = await fetch(`php/api/${endpoint}`, {
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', ...options.headers },
+            headers: isFormData ? { ...options.headers } : { 'Content-Type': 'application/json', ...options.headers },
             ...options
         });
         const result = await response.json();
@@ -240,7 +301,7 @@ const App = {
         alert.innerHTML = `
             <i class="alert-icon fas fa-${this.getAlertIcon(type)}"></i>
             <div class="alert-content">
-                <div class="alert-message">${message}</div>
+                <div class="alert-message">${this.escapeHtml(message)}</div>
             </div>
         `;
         alertContainer.appendChild(alert);
@@ -262,6 +323,16 @@ const App = {
     getAlertIcon(type) {
         const icons = { success: 'check-circle', warning: 'exclamation-triangle', danger: 'times-circle', info: 'info-circle' };
         return icons[type] || 'info-circle';
+    },
+
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, character => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        })[character]);
     },
 
     formatDate(dateString) {
@@ -315,6 +386,7 @@ const App = {
 
 // Inicializar al cargar
 document.addEventListener('DOMContentLoaded', async () => {
+    App.loadCachedData();
     const authenticated = await App.init();
     if (authenticated) {
         await App.loadInitialData();

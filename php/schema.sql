@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS medicamentos (
     fecha_caducidad DATE NOT NULL,
     fecha_ingreso DATE NOT NULL DEFAULT (date('now')),
     observaciones TEXT DEFAULT '',
+    imagen_url TEXT DEFAULT '',
     requiere_receta INTEGER NOT NULL DEFAULT 0,
     es_controlado INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),

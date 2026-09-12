@@ -66,7 +66,8 @@
                 alerts.innerHTML = '<div class="alert alert-success">Contraseña actualizada. Ya puedes iniciar sesión.</div>';
                 setTimeout(() => { window.location.href = 'login.html'; }, 1800);
             } catch (error) {
-                alerts.innerHTML = '<div class="alert alert-danger">' + error.message + '</div>';
+                alerts.innerHTML = '<div class="alert alert-danger"></div>';
+                alerts.firstElementChild.textContent = error.message;
             } finally {
                 button.disabled = false;
             }

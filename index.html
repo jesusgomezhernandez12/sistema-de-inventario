@@ -79,10 +79,6 @@
                     <h1 class="page-title">Dashboard</h1>
                 </div>
                 <div class="top-bar-right">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Buscar medicamentos, presentaciones..." id="global-search">
-                    </div>
                     <button class="notifications" id="notifications-btn" aria-label="Notificaciones">
                         <i class="fas fa-bell"></i>
                         <span class="badge">3</span>
@@ -100,27 +96,12 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/app.js?v=5"></script>
+    <script src="js/app.js?v=14"></script>
     <script src="js/views/dashboard.js"></script>
     <script src="js/views/nuevo-registro.js"></script>
     <script src="js/views/stock.js"></script>
     <script src="js/views/registro-actividades.js"></script>
     <script src="js/views/por-caducar.js"></script>
     
-    <script>
-        // Actualizar badge de caducidad
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const stats = await App.apiRequest('index.php?action=stats');
-                const badge = document.getElementById('badge-caducar');
-                if (badge && stats.proximosCaducar !== undefined) {
-                    badge.textContent = stats.proximosCaducar;
-                    badge.style.display = stats.proximosCaducar > 0 ? 'inline-flex' : 'none';
-                }
-            } catch (error) {
-                console.warn('No se pudo cargar el contador de caducidad');
-            }
-        });
-    </script>
 </body>
 </html>

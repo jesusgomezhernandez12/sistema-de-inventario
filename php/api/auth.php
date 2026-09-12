@@ -1,7 +1,13 @@
 <?php
 
-session_start();
 require_once __DIR__ . '/../config/turso.php';
+
+session_set_cookie_params([
+    'secure' => filter_var($_ENV['SESSION_SECURE'] ?? false, FILTER_VALIDATE_BOOLEAN),
+    'httponly' => true,
+    'samesite' => $_ENV['SESSION_SAMESITE'] ?? 'Lax',
+]);
+session_start();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -32,8 +38,6 @@ try {
             $_SESSION['user_nombre'] = $user['nombre'];
             $_SESSION['user_email'] = $user['email'];
             $_SESSION['user_rol'] = $user['rol'];
-            tursoExecute("UPDATE usuarios SET ultimo_acceso = datetime('now') WHERE id = ?", [$user['id']]);
-
             echo json_encode(['authenticated' => true, 'user' => currentUser()]);
             break;
 

@@ -51,10 +51,12 @@
                 });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || 'No se pudo procesar la solicitud');
-                alerts.innerHTML = '<div class="alert alert-success">' + result.message + '</div>';
+                alerts.innerHTML = '<div class="alert alert-success"></div>';
+                alerts.firstElementChild.textContent = result.message;
                 form.reset();
             } catch (error) {
-                alerts.innerHTML = '<div class="alert alert-danger">' + error.message + '</div>';
+                alerts.innerHTML = '<div class="alert alert-danger"></div>';
+                alerts.firstElementChild.textContent = error.message;
             } finally {
                 button.disabled = false;
             }

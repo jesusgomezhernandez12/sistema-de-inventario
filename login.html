@@ -297,10 +297,8 @@
             const alertContainer = document.getElementById('alert-container');
             const alert = document.createElement('div');
             alert.className = `alert alert-${type}`;
-            alert.innerHTML = `
-                <i class="fas fa-${type === 'danger' ? 'exclamation-circle' : 'check-circle'}"></i>
-                <span>${message}</span>
-            `;
+            alert.innerHTML = `<i class="fas fa-${type === 'danger' ? 'exclamation-circle' : 'check-circle'}"></i><span></span>`;
+            alert.querySelector('span').textContent = message;
             alertContainer.appendChild(alert);
         }
         

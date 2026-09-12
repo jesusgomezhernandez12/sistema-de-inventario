@@ -83,8 +83,8 @@ const DashboardView = {
             <div class="activity-item">
                 <div class="activity-icon ${iconClass}"><i class="fas ${icon}"></i></div>
                 <div class="activity-content">
-                    <div class="activity-title">${act.descripcion}</div>
-                    <div class="activity-meta">${App.formatDateTime(act.fecha)} - ${act.usuario}</div>
+                    <div class="activity-title">${App.escapeHtml(act.descripcion)}</div>
+                    <div class="activity-meta">${App.formatDateTime(act.fecha)} - ${App.escapeHtml(act.usuario)}</div>
                 </div>
             </div>
         `;
@@ -114,6 +114,7 @@ const DashboardView = {
 
     renderExpiryAlerts(medicamentos) {
         const alerts = medicamentos
+            .filter(m => Number(m.cantidad) > 0)
             .map(m => ({ ...m, days: App.daysUntilExpiry(m.fechaCaducidad) }))
             .filter(m => m.days <= 90)
             .sort((a, b) => a.days - b.days)
@@ -139,7 +140,7 @@ const DashboardView = {
                                 <i class="fas fa-cow"></i>
                             </div>
                             <div class="activity-content">
-                                <div class="activity-title">${item.nombre} (${item.presentacion} ${item.concentracion})</div>
+                                <div class="activity-title">${App.escapeHtml(item.nombre)} (${App.escapeHtml(item.presentacion)} ${App.escapeHtml(item.concentracion)})</div>
                                 <div class="activity-meta">
                                     Caduca: ${App.formatDate(item.fechaCaducidad)} 
                                     <span class="badge badge-${status.class}">${status.label}</span>

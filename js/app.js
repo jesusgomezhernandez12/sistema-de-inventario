@@ -6,6 +6,7 @@ const App = {
         actividades: [],
         stats: {}
     },
+    token: null,
 
     async init() {
         this.bindEvents();
@@ -15,32 +16,51 @@ const App = {
     },
 
     async checkAuth() {
-        const response = await fetch('php/api/auth.php?action=check', { credentials: 'same-origin' });
-        const result = await response.json();
-        if (result.authenticated) {
-            this.currentUser = result.user;
-            this.updateUserUI(result.user);
-            return true;
+        this.token = localStorage.getItem('inventario_token');
+        if (!this.token) {
+            if (!window.location.pathname.includes('login.html')) {
+                window.location.href = 'login.html';
+            }
+            return false;
         }
-        if (!window.location.pathname.includes('login.html')) window.location.href = 'login.html';
+
+        try {
+            const response = await fetch('/api/auth/check', {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            const result = await response.json();
+            if (result.authenticated) {
+                this.currentUser = result.user;
+                this.updateUserUI(result.user);
+                return true;
+            }
+        } catch {
+            // Token inválido o expirado
+        }
+
+        this.logout();
         return false;
     },
 
     async login(email, password) {
-        const response = await fetch('php/api/auth.php?action=login', {
+        const response = await fetch('/api/auth/login', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'No se pudo iniciar sesión');
+        
+        this.token = result.token;
+        localStorage.setItem('inventario_token', this.token);
         this.currentUser = result.user;
+        this.updateUserUI(result.user);
         return result.user;
     },
 
-    async logout() {
-        await fetch('php/api/auth.php?action=logout', { method: 'POST', credentials: 'same-origin' });
+    logout() {
+        this.token = null;
+        localStorage.removeItem('inventario_token');
         this.currentUser = null;
         window.location.href = 'login.html';
     },
@@ -108,7 +128,7 @@ const App = {
                 return;
             }
 
-            const initialData = await this.apiRequest('index.php?action=bootstrap');
+            const initialData = await this.apiRequest('/api/index?action=bootstrap');
             this.data.medicamentos = (initialData.medicamentos || []).map(item => this.normalizeRecord(item));
             this.data.actividades = [];
             this.data.stats = initialData.stats || {};
@@ -125,7 +145,7 @@ const App = {
 
     async refreshInitialDataInBackground() {
         try {
-            const initialData = await this.apiRequest('index.php?action=bootstrap');
+            const initialData = await this.apiRequest('/api/index?action=bootstrap');
             this.data.medicamentos = (initialData.medicamentos || []).map(item => this.normalizeRecord(item));
             this.data.stats = initialData.stats || {};
             localStorage.setItem('inventario_bootstrap', JSON.stringify({ ...initialData, cachedAt: Date.now() }));
@@ -138,7 +158,7 @@ const App = {
 
     async loadActivitiesInBackground() {
         try {
-            const actividades = await this.apiRequest('index.php?action=actividades');
+            const actividades = await this.apiRequest('/api/index?action=actividades');
             this.data.actividades = (actividades.data || []).map(item => this.normalizeRecord(item));
             this.renderCurrentView();
         } catch (error) {
@@ -180,14 +200,24 @@ const App = {
 
     async apiRequest(endpoint, options = {}) {
         const isFormData = options.body instanceof FormData;
-        const response = await fetch(`php/api/${endpoint}`, {
+        const headers = {
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+            ...options.headers
+        };
+        
+        if (this.token) {
+            headers['Authorization'] = `Bearer ${this.token}`;
+        }
+
+        const response = await fetch(endpoint, {
             credentials: 'same-origin',
-            headers: isFormData ? { ...options.headers } : { 'Content-Type': 'application/json', ...options.headers },
+            headers,
             ...options
         });
+        
         const result = await response.json();
         if (response.status === 401) {
-            window.location.href = 'login.html';
+            this.logout();
             throw new Error('Sesión expirada');
         }
         if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
@@ -327,11 +357,11 @@ const App = {
 
     escapeHtml(value) {
         return String(value ?? '').replace(/[&<>'"]/g, character => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            "'": '&#39;',
-            '"': '&quot;'
+            '&': '&',
+            '<': '<',
+            '>': '>',
+            "'": ''',
+            '"': '"'
         })[character]);
     },
 

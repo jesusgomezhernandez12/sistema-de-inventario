@@ -1,16 +1,38 @@
-.env
-.env.*
-!.env.example
-
-# Local database and server files
-.db_initialized
-*.sqlite
-*.sqlite3
-
-# Runtime logs and process files
-*.log
-/tmp/
-
 # Dependencies
 node_modules/
-vendor/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+vercel.log
+
+# Vercel
+.vercel
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PHP legacy (opcional, mantener solo schema.sql)
+php/api/
+php/config/
+php/lib/
+php/scripts/
+!php/schema.sql
+
+# Uploads (si usas imágenes locales)
+assets/uploads/*
+
+# Cache
+*.tsbuildinfo

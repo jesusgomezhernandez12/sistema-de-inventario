@@ -1,1 +1,0 @@
-ALTER TABLE medicamentos ADD COLUMN imagen_url TEXT DEFAULT '';

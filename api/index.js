@@ -75,7 +75,11 @@ export async function POST(request) {
     const url = new URL(request.url);
     const action = url.searchParams.get('action');
     const user = requireAuth(request, ['admin', 'veterinario', 'tecnico']);
-    const body = await request.json();
+    const contentType = request.headers.get('content-type') || '';
+
+    const body = contentType.includes('application/json')
+        ? await request.json()
+        : Object.fromEntries((await request.formData()).entries());
 
     if (action === 'medicamentos') {
       return await handleCreateMedicamento(body, user);

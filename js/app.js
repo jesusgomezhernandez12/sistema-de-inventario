@@ -215,12 +215,25 @@ const App = {
             ...options
         });
         
-        const result = await response.json();
+        const text = await response.text();
+
+        let result = {};
+        try {
+             result = text ? JSON.parse(text) : {};
+        } catch {
+              console.error('Respuesta no válida del servidor:', text);
+              throw new Error(`Respuesta inválida del servidor (HTTP ${response.status})`);
+         }
+
         if (response.status === 401) {
-            this.logout();
-            throw new Error('Sesión expirada');
+               this.logout();
+               throw new Error('Sesión expirada');
         }
-        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+
+        if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}`);
+        }
+
         return result;
     },
 

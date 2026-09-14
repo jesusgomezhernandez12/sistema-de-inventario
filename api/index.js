@@ -1,4 +1,4 @@
-import { json, error, requireAuth, dbQuery, dbExecute, dbTransaction, dbBatch } from '../../_lib/db.js';
+import { json, error, requireAuth, dbQuery, dbExecute, dbTransaction, dbBatch } from './_lib/db.js';
 
 // Helper: stats SQL
 const statsSql = `

@@ -18,4 +18,4 @@ export async function GET() {
       error: e.message
     }, 503);
   }
-}
+} 

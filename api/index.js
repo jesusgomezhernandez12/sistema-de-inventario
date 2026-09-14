@@ -221,3 +221,4 @@ async function handleOperacion(input, user) {
     actividad: results[3].rows[0] ?? null
   });
 }
+ 

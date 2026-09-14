@@ -252,7 +252,7 @@ const RegistroActividadesView = {
             }
             data.fecha = new Date(data.fecha).toISOString().replace('T', ' ').slice(0, 19);
 
-            const nueva = await app.apiRequest('index.php?action=actividades', {
+            const nueva = await app.apiRequest('/api/index?action=actividades', {
                 method: 'POST',
                 body: JSON.stringify({
                     tipo: data.tipo,

@@ -163,7 +163,7 @@ const NuevoRegistroView = {
             formData.delete('requiereReceta');
             formData.delete('esControlado');
 
-            const nuevo = await app.apiRequest('index.php?action=medicamentos', {
+            const nuevo = await app.apiRequest('/api/index?action=medicamentos', {
                 method: 'POST',
                 body: formData
             });

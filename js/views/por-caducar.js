@@ -358,7 +358,7 @@ const PorCaducarView = {
             
             let updatedItem = item;
             if (['baja', 'salida', 'ajuste'].includes(action)) {
-                const operation = await app.apiRequest('index.php?action=operacion', {
+                const operation = await app.apiRequest('/api/index?action=operacion', {
                     method: 'POST',
                     body: JSON.stringify({ tipo: action, medicamento_id: item.id, cantidad })
                 });
@@ -367,7 +367,7 @@ const PorCaducarView = {
                 app.persistCachedData();
                 app.data.medicamentos = app.data.medicamentos.map(current => current.id == id ? updatedItem : current);
             } else {
-                await app.apiRequest('index.php?action=actividades', {
+                await app.apiRequest('/api/index?action=actividades', {
                     method: 'POST',
                     body: JSON.stringify({
                         tipo: accion.tipo,

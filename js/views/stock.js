@@ -241,7 +241,7 @@ const StockView = {
         const button = form.querySelector('button[type="submit"]');
         button.disabled = true;
         try {
-            const result = await app.apiRequest('index.php?action=operacion', {
+            const result = await app.apiRequest('/api/index?action=operacion', {
                 method: 'POST',
                 body: JSON.stringify({ tipo: 'salida', medicamento_id: item.id, cantidad: quantity })
             });

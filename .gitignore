@@ -9,10 +9,6 @@ node_modules/
 # Logs
 *.log
 npm-debug.log*
-vercel.log
-
-# Vercel
-.vercel
 
 # IDE
 .vscode/
@@ -23,13 +19,6 @@ vercel.log
 # OS
 .DS_Store
 Thumbs.db
-
-# PHP legacy (opcional, mantener solo schema.sql)
-php/api/
-php/config/
-php/lib/
-php/scripts/
-!php/schema.sql
 
 # Uploads (si usas imágenes locales)
 assets/uploads/*

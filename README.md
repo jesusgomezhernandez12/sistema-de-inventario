@@ -1,258 +1,135 @@
-# Inventario Ganadero - Medicamentos y Vacunas
+# Sistema de Inventario Digital de Medicamentos y Vacunas
 
-Sistema de gestión de inventario veterinario **deployado en Vercel + Turso (libSQL)**.
+Sistema web frontend para la gestión de inventario de medicamentos y vacunas, desarrollado con PHP, JavaScript y CSS.
 
-## 🏗️ Arquitectura
+## Características
 
-| Capa | Tecnología |
-|------|------------|
-| **Frontend** | HTML5, CSS3 (Variables, Grid, Flexbox), JS ES6+ (Módulos) |
-| **Backend API** | **Vercel Serverless Functions** (Node.js/TypeScript-like ES Modules) |
-| **Auth** | JWT stateless (jose) + bcryptjs |
-| **Base de Datos** | **Turso (libSQL/SQLite via HTTP)** |
-| **Despliegue** | **Vercel** (frontend + API en un solo deploy) |
-| **Iconos/Fuentes** | Font Awesome 6, Inter (Google Fonts) |
+- **Dashboard**: Vista general con estadísticas, actividad reciente y alertas de caducidad
+- **Nuevo Registro**: Formulario completo para registrar medicamentos y vacunas
+- **Registro de Actividades**: Historial de entradas, salidas, ajustes, caducidades y bajas con filtros y paginación
+- **Medicamentos por Caducar**: Lista detallada con filtros por rango de días, exportación a CSV y acciones rápidas
 
-## 📁 Estructura para Vercel
+## Tecnologías
+
+- **Frontend**: HTML5, CSS3 (CSS Variables, Grid, Flexbox), JavaScript ES6+ (Módulos)
+- **Backend**: PHP 8+ (API REST simple)
+- **Base de Datos**: MySQL/MariaDB
+- **Iconos**: Font Awesome 6
+- **Fuente**: Inter (Google Fonts)
+
+## Estructura del Proyecto
 
 ```
 sistema-de-inventario/
-├── index.html                 # App principal (SPA)
-├── login.html                 # Login JWT
-├── recuperar.html             # Solicitar reset password
-├── restablecer.html           # Formulario reset password
-├── vercel.json                # Configuración Vercel
-├── package.json               # Dependencias Node.js
-├── .env.example               # Variables de entorno
+├── index.php                 # Punto de entrada principal
 ├── css/
-│   └── styles.css
+│   └── styles.css           # Estilos principales
 ├── js/
-│   ├── app.js                 # Core: JWT auth, routing, API client
-│   └── views/                 # dashboard, nuevo-registro, stock, registro-actividades, por-caducar
-├── api/                       # 🔥 Vercel Serverless Functions
-│   ├── _lib/
-│   │   └── db.js              # Turso client + JWT + helpers
-│   ├── auth/
-│   │   ├── check.js           # GET /api/auth/check
-│   │   ├── login.js           # POST /api/auth/login
-│   │   ├── logout.js          # POST /api/auth/logout
-│   │   ├── request-reset.js   # POST /api/auth/request-reset
-│   │   └── reset-password.js  # POST /api/auth/reset-password
-│   ├── index.js               # GET/POST /api/index?action=...
-│   └── health.js              # GET /api/health
-└── php/                       # 📦 LEGACY (solo schema.sql para init)
-    └── schema.sql
+│   ├── app.js               # Aplicación principal (routing, estado, utilidades)
+│   └── views/
+│       ├── dashboard.js     # Vista Dashboard
+│       ├── nuevo-registro.js # Vista Nuevo Registro
+│       ├── registro-actividades.js # Vista Registro de Actividades
+│       └── por-caducar.js   # Vista Medicamentos por Caducar
+├── php/
+│   ├── api/
+│   │   └── index.php        # Endpoints API REST
+│   ├── config/
+│   │   └── database.php     # Configuración de base de datos
+│   └── schema.sql           # Esquema de base de datos
+└── assets/
+    └── images/              # Imágenes y recursos estáticos
 ```
 
----
+## Instalación
 
-## 🚀 Despliegue en Vercel (3 pasos)
+### Requisitos
 
-### 1. Preparar base de datos en Turso
+- PHP 8.0+
+- MySQL 5.7+ / MariaDB 10.3+
+- Servidor web (Apache/Nginx) o PHP built-in server
+
+### 1. Configurar Base de Datos
+
 ```bash
-# Instalar CLI
-curl -sSfL https://get.tur.so/install.sh | bash
-
-# Login y crear DB
-turso auth login
-turso db create inventario-ganadero
-
-# Obtener credenciales
-turso db show inventario-ganadero --url
-turso db tokens create inventario-ganadero
-
-# Inicializar schema
-turso db shell inventario-ganadero < php/schema.sql
+# Crear la base de datos y tablas
+mysql -u root -p < php/schema.sql
 ```
 
-### 2. Push a GitHub
-```bash
-git add .
-git commit -m "Vercel + Turso deploy"
-git push origin main
+### 2. Configurar Conexión
+
+Edita `php/config/database.php` o crea un archivo `.env` en la raíz:
+
+```env
+DB_HOST=localhost
+DB_NAME=inventario_medicamentos
+DB_USER=tu_usuario
+DB_PASS=tu_password
 ```
 
-### 3. Importar en Vercel
-1. [Vercel Dashboard](https://vercel.com/dashboard) → **Add New Project**
-2. Importar repo de GitHub
-3. **Configuración**:
-   - Framework: **Other**
-   - Build Command: *(vacío)*
-   - Output Directory: **.** (root)
-   - Install Command: *(vacío)*
-4. **Variables de entorno** (Settings → Environment Variables):
-   ```
-   TURSO_DATABASE_URL=libsql://tu-db-tu-org.turso.io
-   TURSO_AUTH_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   JWT_SECRET=tu-jwt-secret-generado-con-openssl-rand-base64-32
-   APP_URL=https://tu-proyecto.vercel.app
-   ```
-5. **Deploy** 🎉
+### 3. Iniciar Servidor
 
----
-
-## 🔑 Generar JWT_SECRET
+**Opción A: PHP Built-in Server (Desarrollo)**
 ```bash
-openssl rand -base64 32
-# Ejemplo: K7gNU7s8mV9zL2pQ4wR6tY8uI1oP3aS5dF7hJ9kL1mN=
-```
-
----
-
-## 🛠️ Desarrollo Local
-
-### Opción A: `vercel dev` (recomendado, usa las mismas functions)
-```bash
-npm install -g vercel
-vercel dev
-# → http://localhost:3000
-```
-
-### Opción B: Servidor estático simple (solo frontend, API mock)
-```bash
-# Python
-python3 -m http.server 8000
-
-# Node
-npx serve .
-
-# PHP (legacy)
 php -S localhost:8000
 ```
 
-> **Nota**: Con servidor estático simple, las APIs `/api/*` no funcionarán. Usa `vercel dev` para desarrollo completo.
+**Opción B: Apache/Nginx**
+Configura el DocumentRoot apuntando a la carpeta del proyecto.
 
----
+### 4. Acceder
 
-## 📡 API Endpoints (Vercel Functions)
+Abre `http://localhost:8000` en tu navegador.
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| **Auth** |
-| POST | `/api/auth/login` | Login → retorna JWT |
-| GET | `/api/auth/check` | Verificar token (header `Authorization: Bearer <token>`) |
-| POST | `/api/auth/logout` | Logout (stateless, solo client-side) |
-| POST | `/api/auth/request-reset` | Solicitar reset password |
-| POST | `/api/auth/reset-password` | Confirmar reset con token |
-| **Inventario** |
-| GET | `/api/index?action=bootstrap` | Medicamentos + stats (carga inicial) |
-| GET | `/api/index?action=stats` | Stats dashboard |
-| GET | `/api/index?action=medicamentos` | Listar medicamentos |
-| POST | `/api/index?action=medicamentos` | Crear medicamento |
-| GET | `/api/index?action=actividades` | Historial actividades |
-| POST | `/api/index?action=actividades` | Registrar actividad |
-| POST | `/api/index?action=operacion` | Baja/Salida/Ajuste stock |
-| **Health** |
-| GET | `/api/health` | Health check |
+## API Endpoints
 
----
+### Medicamentos
+- `GET /php/api/index.php?action=medicamentos` - Listar (con paginación, búsqueda, filtro por tipo)
+- `GET /php/api/index.php?action=medicamentos&id=1` - Obtener uno
+- `POST /php/api/index.php?action=medicamentos` - Crear
+- `PUT /php/api/index.php?action=medicamentos&id=1` - Actualizar
+- `DELETE /php/api/index.php?action=medicamentos&id=1` - Eliminar
 
-## 🔐 Autenticación JWT
+### Actividades
+- `GET /php/api/index.php?action=actividades` - Listar
+- `GET /php/api/index.php?action=actividades&id=1` - Obtener una
+- `POST /php/api/index.php?action=actividades` - Crear
 
-```javascript
-// Login
-const res = await fetch('/api/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email, password })
-});
-const { token, user } = await res.json();
-localStorage.setItem('inventario_token', token);
+### Estadísticas
+- `GET /php/api/index.php?action=stats` - Obtener estadísticas del dashboard
 
-// Requests autenticadas
-const res = await fetch('/api/index?action=medicamentos', {
-  headers: { 'Authorization': `Bearer ${token}` }
-});
-```
+## Funcionalidades Principales
 
-**Token**: HS256, expiración 2h, guardado en `localStorage`.
+### Dashboard
+- 4 tarjetas de estadísticas: Total Medicamentos, Total Vacunas, Próximos a Caducar, Caducados
+- Actividad reciente (últimas 5)
+- Alertas de caducidad (próximos 90 días)
 
----
+### Nuevo Registro
+- Formulario validado (cliente y servidor)
+- Campos: Nombre, Tipo (Medicamento/Vacuna), Lote, Laboratorio, Presentación, Concentración, Cantidad, Unidad, Fechas, Ubicación, Temperatura, Observaciones
+- Checkboxes: Requiere receta, Medicamento controlado
 
-## 🗄️ Base de Datos (Turso)
+### Registro de Actividades
+- Tabla con paginación
+- Filtros: Búsqueda texto, Tipo de actividad, Rango de fechas
+- Modal para nueva actividad
+- Modal de detalle
 
-### Schema principal
-```sql
--- Medicamentos
-CREATE TABLE medicamentos (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nombre TEXT NOT NULL,
-  tipo TEXT CHECK (tipo IN ('medicamento','vacuna')) DEFAULT 'medicamento',
-  presentacion TEXT, concentracion TEXT,
-  cantidad INTEGER DEFAULT 1, unidad TEXT DEFAULT 'frascos',
-  fecha_caducidad DATE NOT NULL, fecha_ingreso DATE DEFAULT (date('now')),
-  observaciones TEXT, imagen_url TEXT,
-  requiere_receta INTEGER DEFAULT 0, es_controlado INTEGER DEFAULT 0,
-  created_at DATETIME DEFAULT (datetime('now')),
-  updated_at DATETIME DEFAULT (datetime('now'))
-);
+### Medicamentos por Caducar
+- 4 tarjetas de resumen: Caducados, Críticos (≤30 días), Advertencia (31-90), Vigentes (>90)
+- Tabla con paginación y ordenación por fecha
+- Filtros: Búsqueda, Rango de días (0, 30, 90, 180, Todos), Estado
+- Exportación a CSV
+- Acciones por fila: Baja, Generar Alerta, Registrar Salida, Ajustar Stock
 
--- Actividades
-CREATE TABLE actividades (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  tipo TEXT CHECK (tipo IN ('entrada','salida','ajuste','caducidad','baja')),
-  medicamento_id INTEGER REFERENCES medicamentos(id),
-  medicamento TEXT, lote TEXT, cantidad INTEGER,
-  descripcion TEXT NOT NULL, fecha DATETIME NOT NULL,
-  usuario TEXT DEFAULT 'Sistema', created_at DATETIME DEFAULT (datetime('now'))
-);
+## Responsive
 
--- Usuarios
-CREATE TABLE usuarios (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nombre TEXT, email TEXT UNIQUE, password TEXT,
-  rol TEXT CHECK (rol IN ('admin','veterinario','tecnico','visualizador')),
-  activo INTEGER DEFAULT 1, ultimo_acceso DATETIME,
-  created_at DATETIME DEFAULT (datetime('now'))
-);
+- Sidebar colapsable en móviles (< 1024px)
+- Tablas con scroll horizontal
+- Formularios adaptables
+- Modales responsivos
 
--- Password reset tokens
-CREATE TABLE password_reset_tokens (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  usuario_id INTEGER REFERENCES usuarios(id),
-  token_hash TEXT UNIQUE, expires_at DATETIME, used_at DATETIME
-);
-```
-
-### Datos demo incluidos
-- 10 medicamentos/vacunas veterinarios
-- 3 usuarios: admin, veterinario, tecnico (pass: admin123, vet123, tecnico123)
-
----
-
-## 📱 Funcionalidades
-
-- **Login/Logout** JWT + recuperación de contraseña
-- **Dashboard**: Stats, actividad reciente, alertas caducidad
-- **Nuevo Registro**: Medicamentos/vacunas con imagen
-- **Stock**: Listado con filtros, búsqueda, paginación
-- **Registro Actividades**: Historial CRUD con modales
-- **Por Caducar**: Filtros por rango (0/30/90/180 días), export CSV, acciones rápidas
-- **Responsive**: Mobile-first, sidebar colapsable, tablas scrollables
-
----
-
-## 🔧 Comandos Útiles
-
-```bash
-# Desarrollo local con Vercel
-vercel dev
-
-# Deploy a preview
-vercel
-
-# Deploy a producción
-vercel --prod
-
-# Ver logs de funciones
-vercel logs
-
-# Ejecutar schema en Turso (si no usaste CLI)
-turso db shell inventario-ganadero < php/schema.sql
-```
-
----
-
-## 📄 Licencia
+## Licencia
 
 MIT

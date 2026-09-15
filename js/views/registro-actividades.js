@@ -19,7 +19,7 @@ const RegistroActividadesView = {
                         <form id="filtros-form" class="form-row" style="gap: 1rem; align-items: end;">
                             <div class="form-group" style="flex: 1; min-width: 200px;">
                                 <label class="form-label">Buscar</label>
-                                <input type="text" class="form-input" name="busqueda" id="busqueda" placeholder="Buscar por descripción, usuario, medicamento..." value="${this.filters.busqueda}">
+                                <input type="text" class="form-input" name="busqueda" id="busqueda" placeholder="Buscar por descripción, usuario, lote..." value="${this.filters.busqueda}">
                             </div>
                             <div class="form-group" style="min-width: 180px;">
                                 <label class="form-label">Tipo de Actividad</label>
@@ -53,6 +53,7 @@ const RegistroActividadesView = {
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title"><i class="fas fa-list mr-2"></i>Registro de Actividades (${filtered.length} registros)</h3>
+                        <button class="btn btn-primary" id="btn-nueva-actividad"><i class="fas fa-plus"></i> Nueva Actividad</button>
                     </div>
                     <div class="card-body p-0">
                         ${filtered.length > 0 ? `
@@ -64,6 +65,7 @@ const RegistroActividadesView = {
                                             <th>Tipo</th>
                                             <th>Descripción</th>
                                             <th>Medicamento</th>
+                                            <th>Lote</th>
                                             <th>Cantidad</th>
                                             <th>Usuario</th>
                                             <th>Acciones</th>
@@ -80,8 +82,66 @@ const RegistroActividadesView = {
                                 <i class="fas fa-history"></i>
                                 <h3>No hay actividades registradas</h3>
                                 <p>No se encontraron actividades con los filtros actuales</p>
+                                <button class="btn btn-primary" id="btn-nueva-actividad-empty"><i class="fas fa-plus"></i> Registrar Actividad</button>
                             </div>
                         `}
+                    </div>
+                </div>
+
+                <div class="modal-overlay" id="modal-nueva-actividad">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3 class="modal-title"><i class="fas fa-plus-circle mr-2"></i>Nueva Actividad</h3>
+                            <button class="modal-close" data-modal="modal-nueva-actividad"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="actividad-form" novalidate>
+                                <div class="form-group">
+                                    <label class="form-label">Tipo de Actividad <span class="required">*</span></label>
+                                    <select class="form-input form-select" name="tipo" id="actividad-tipo" required>
+                                        <option value="">Seleccionar tipo</option>
+                                        <option value="entrada">Entrada de stock</option>
+                                        <option value="salida">Salida de stock</option>
+                                        <option value="ajuste">Ajuste de inventario</option>
+                                        <option value="caducidad">Reporte de caducidad</option>
+                                        <option value="baja">Baja de producto</option>
+                                    </select>
+                                    <div class="form-error" id="actividad-tipo-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Medicamento/Vacuna <span class="required">*</span></label>
+                                    <select class="form-input form-select" name="medicamentoId" id="actividad-medicamento" required>
+                                        <option value="">Seleccionar medicamento</option>
+                                        ${data.medicamentos.map(m => `<option value="${m.id}">${m.nombre} (${m.lote})</option>`).join('')}
+                                    </select>
+                                    <div class="form-error" id="actividad-medicamento-error"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Cantidad <span class="required">*</span></label>
+                                        <input type="number" class="form-input" name="cantidad" id="actividad-cantidad" min="1" value="1" required>
+                                        <div class="form-error" id="actividad-cantidad-error"></div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Fecha <span class="required">*</span></label>
+                                        <input type="datetime-local" class="form-input" name="fecha" id="actividad-fecha" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Descripción <span class="required">*</span></label>
+                                    <textarea class="form-input form-textarea" name="descripcion" id="actividad-descripcion" placeholder="Detalles de la actividad..." required></textarea>
+                                    <div class="form-error" id="actividad-descripcion-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Usuario Responsable</label>
+                                    <input type="text" class="form-input" name="usuario" id="actividad-usuario" placeholder="Nombre del usuario" value="Usuario Actual">
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-modal="modal-nueva-actividad">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
@@ -108,7 +168,8 @@ const RegistroActividadesView = {
                 const search = this.filters.busqueda.toLowerCase();
                 const match = act.descripcion.toLowerCase().includes(search) ||
                              act.usuario.toLowerCase().includes(search) ||
-                             (act.medicamento?.toLowerCase().includes(search));
+                             (act.medicamento?.toLowerCase().includes(search)) ||
+                             (act.lote?.toLowerCase().includes(search));
                 if (!match) return false;
             }
             if (this.filters.fechaInicio) {
@@ -161,10 +222,11 @@ const RegistroActividadesView = {
             <tr>
                 <td>${App.formatDateTime(act.fecha)}</td>
                 <td><span class="badge ${tipo.class}"><i class="fas ${tipo.icon} mr-1"></i>${tipo.label}</span></td>
-                <td>${App.escapeHtml(act.descripcion)}</td>
-                <td>${App.escapeHtml(act.medicamento || '-')}</td>
-                <td>${App.escapeHtml(act.cantidad || '-')}</td>
-                <td>${App.escapeHtml(act.usuario || '-')}</td>
+                <td>${act.descripcion}</td>
+                <td>${act.medicamento || '-'}</td>
+                <td>${act.lote || '-'}</td>
+                <td>${act.cantidad || '-'}</td>
+                <td>${act.usuario || '-'}</td>
                 <td>
                     <button class="btn btn-icon btn-secondary" data-action="ver" data-id="${act.id}" title="Ver detalle">
                         <i class="fas fa-eye"></i>
@@ -177,6 +239,8 @@ const RegistroActividadesView = {
     bindEvents(app) {
         const formFiltros = document.getElementById('filtros-form');
         const btnLimpiar = document.getElementById('btn-limpiar');
+        const btnNuevaActividad = document.getElementById('btn-nueva-actividad');
+        const btnNuevaActividadEmpty = document.getElementById('btn-nueva-actividad-empty');
         const formActividad = document.getElementById('actividad-form');
 
         if (formFiltros) {
@@ -206,6 +270,10 @@ const RegistroActividadesView = {
             }
             app.openModal('modal-nueva-actividad');
         };
+
+        [btnNuevaActividad, btnNuevaActividadEmpty].forEach(btn => {
+            if (btn) btn.addEventListener('click', openModal);
+        });
 
         if (formActividad) {
             formActividad.addEventListener('submit', (e) => this.handleActividadSubmit(e, app));
@@ -243,30 +311,22 @@ const RegistroActividadesView = {
         try {
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
-            data.cantidad = parseInt(data.cantidad) || null;
+            data.cantidad = parseInt(data.cantidad);
 
             const medicamento = app.data.medicamentos.find(m => m.id == data.medicamentoId);
             if (medicamento) {
                 data.medicamento = medicamento.nombre;
-                data.lote = '';
+                data.lote = medicamento.lote;
             }
-            data.fecha = new Date(data.fecha).toISOString().replace('T', ' ').slice(0, 19);
+            data.fecha = new Date(data.fecha).toISOString();
 
-            const nueva = await app.apiRequest('/api/index?action=actividades', {
+            const response = await app.fetchAPI(app.apiBase + '?action=actividades', {
                 method: 'POST',
-                body: JSON.stringify({
-                    tipo: data.tipo,
-                    medicamento_id: data.medicamentoId || null,
-                    medicamento: data.medicamento ?? '',
-                    lote: data.lote ?? '',
-                    cantidad: data.cantidad,
-                    descripcion: data.descripcion,
-                    fecha: data.fecha
-                })
+                body: JSON.stringify(data)
             });
 
             app.showAlert('Actividad registrada exitosamente', 'success');
-            app.data.actividades.unshift(app.normalizeRecord(nueva));
+            app.data.actividades.unshift(app.normalizeRecord(response));
             app.closeModal('modal-nueva-actividad');
             this.currentPage = 1;
             app.renderCurrentView();
@@ -312,13 +372,15 @@ const RegistroActividadesView = {
                     <dt class="font-medium text-gray-600">Tipo:</dt>
                     <dd class="text-gray-900"><span class="badge badge-${this.getTipoBadgeClass(act.tipo)}">${act.tipo}</span></dd>
                     <dt class="font-medium text-gray-600">Descripción:</dt>
-                    <dd class="text-gray-900">${App.escapeHtml(act.descripcion)}</dd>
+                    <dd class="text-gray-900">${act.descripcion}</dd>
                     <dt class="font-medium text-gray-600">Medicamento:</dt>
-                    <dd class="text-gray-900">${App.escapeHtml(act.medicamento || '-')}</dd>
+                    <dd class="text-gray-900">${act.medicamento || '-'}</dd>
+                    <dt class="font-medium text-gray-600">Lote:</dt>
+                    <dd class="text-gray-900">${act.lote || '-'}</dd>
                     <dt class="font-medium text-gray-600">Cantidad:</dt>
-                    <dd class="text-gray-900">${App.escapeHtml(act.cantidad || '-')}</dd>
+                    <dd class="text-gray-900">${act.cantidad || '-'}</dd>
                     <dt class="font-medium text-gray-600">Usuario:</dt>
-                    <dd class="text-gray-900">${App.escapeHtml(act.usuario || '-')}</dd>
+                    <dd class="text-gray-900">${act.usuario || '-'}</dd>
                 </dl>
             `;
         }

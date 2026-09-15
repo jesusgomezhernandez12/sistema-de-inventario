@@ -53,7 +53,7 @@ const PorCaducarView = {
                         <form id="filtros-caducar" class="form-row" style="gap: 1rem; align-items: end;">
                             <div class="form-group" style="flex: 1; min-width: 250px;">
                                 <label class="form-label">Buscar</label>
-                                <input type="text" class="form-input" name="busqueda" id="busqueda-caducar" placeholder="Buscar por nombre, presentación, concentración..." value="${this.filters.busqueda}">
+                                <input type="text" class="form-input" name="busqueda" id="busqueda-caducar" placeholder="Buscar por nombre, lote, laboratorio..." value="${this.filters.busqueda}">
                             </div>
                             <div class="form-group" style="min-width: 200px;">
                                 <label class="form-label">Rango de Días</label>
@@ -100,11 +100,12 @@ const PorCaducarView = {
                                         <tr>
                                             <th>Medicamento</th>
                                             <th>Tipo</th>
-                                            <th>Presentación</th>
-                                            <th>Concentración</th>
+                                            <th>Lote</th>
+                                            <th>Laboratorio</th>
                                             <th>Caducidad</th>
                                             <th>Días Restantes</th>
                                             <th>Stock</th>
+                                            <th>Ubicación</th>
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
@@ -141,7 +142,7 @@ const PorCaducarView = {
     },
 
     getExpiryItems(medicamentos) {
-        return medicamentos.filter(m => Number(m.cantidad) > 0).map(m => {
+        return medicamentos.map(m => {
             const days = App.daysUntilExpiry(m.fechaCaducidad);
             const status = App.getExpiryStatus(days);
             return { ...m, days, status };
@@ -176,8 +177,9 @@ const PorCaducarView = {
             if (this.filters.busqueda) {
                 const search = this.filters.busqueda.toLowerCase();
                 const match = item.nombre.toLowerCase().includes(search) ||
-                             item.presentacion.toLowerCase().includes(search) ||
-                             item.concentracion.toLowerCase().includes(search);
+                             item.lote.toLowerCase().includes(search) ||
+                             (item.laboratorio?.toLowerCase().includes(search)) ||
+                             (item.presentacion?.toLowerCase().includes(search));
                 if (!match) return false;
             }
             return true;
@@ -216,17 +218,18 @@ const PorCaducarView = {
         return `
             <tr style="${item.days < 0 ? 'background: rgba(239, 68, 68, 0.03);' : ''}">
                 <td>
-                    <div style="font-weight: 500;">${App.escapeHtml(item.nombre)}</div>
-                    <div style="font-size: 0.75rem; color: var(--gray-500);">${App.escapeHtml(item.presentacion || '')} ${App.escapeHtml(item.concentracion || '')}</div>
+                    <div style="font-weight: 500;">${item.nombre}</div>
+                    <div style="font-size: 0.75rem; color: var(--gray-500);">${item.presentacion || ''} ${item.concentracion || ''}</div>
                 </td>
                 <td><span class="badge ${tipoClass}"><i class="fas ${tipoIcon} mr-1"></i>${tipoLabel}</span></td>
-                <td>${App.escapeHtml(item.presentacion || '-')}</td>
-                <td>${App.escapeHtml(item.concentracion || '-')}</td>
+                <td><code style="font-size: 0.8125rem;">${item.lote}</code></td>
+                <td>${item.laboratorio || '-'}</td>
                 <td>${App.formatDate(item.fechaCaducidad)}</td>
                 <td>
                     <span class="expiry-days ${item.status.class}">${item.status.label}</span>
                 </td>
-                <td>${App.escapeHtml(item.cantidad)} ${App.escapeHtml(item.unidad || 'frascos')}</td>
+                <td>${item.cantidad} ${item.unidad || 'unidades'}</td>
+                <td>${item.ubicacion || '-'}</td>
                 <td>
                     <div class="expiry-actions">
                         <button class="btn btn-icon btn-secondary" data-action="acciones" data-id="${item.id}" title="Acciones">
@@ -300,8 +303,8 @@ const PorCaducarView = {
                             <i class="fas ${item.tipo === 'vacuna' ? 'fa-syringe' : 'fa-pills'}"></i>
                         </div>
                         <div>
-                            <div style="font-weight: 600;">${App.escapeHtml(item.nombre)}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-500);">${App.escapeHtml(item.presentacion)} ${App.escapeHtml(item.concentracion)} | ${App.formatDate(item.fechaCaducidad)}</div>
+                            <div style="font-weight: 600;">${item.nombre}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">Lote: ${item.lote} | ${App.formatDate(item.fechaCaducidad)}</div>
                             <span class="expiry-days ${status.class}">${status.label}</span>
                         </div>
                     </div>
@@ -333,52 +336,32 @@ const PorCaducarView = {
         const item = app.data.medicamentos.find(m => m.id == id);
         if (!item) return;
 
-        let cantidad = null;
-        if (action === 'salida') {
-            cantidad = Number(window.prompt(`Cantidad a retirar (stock disponible: ${item.cantidad})`, '1'));
-            if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > Number(item.cantidad)) return;
-        }
-        if (action === 'ajuste') {
-            cantidad = Number(window.prompt(`Nuevo stock para ${item.nombre}`, item.cantidad));
-            if (!Number.isInteger(cantidad) || cantidad < 0) return;
-        }
-
         const acciones = {
-            baja: { tipo: 'baja', descripcion: `Baja por caducidad: ${item.nombre} (${item.presentacion} ${item.concentracion})` },
-            alerta: { tipo: 'caducidad', descripcion: `Alerta de caducidad generada: ${item.nombre} (${item.presentacion} ${item.concentracion})` },
-            salida: { tipo: 'salida', descripcion: `Salida por cercanía a caducidad: ${item.nombre} (${item.presentacion} ${item.concentracion})` },
-            ajuste: { tipo: 'ajuste', descripcion: `Ajuste de stock por revisión de caducidad: ${item.nombre} (${item.presentacion} ${item.concentracion})` }
+            baja: { tipo: 'baja', descripcion: `Baja por caducidad: ${item.nombre} (Lote: ${item.lote})` },
+            alerta: { tipo: 'caducidad', descripcion: `Alerta de caducidad generada: ${item.nombre} (Lote: ${item.lote})` },
+            salida: { tipo: 'salida', descripcion: `Salida por cercanía a caducidad: ${item.nombre} (Lote: ${item.lote})` },
+            ajuste: { tipo: 'ajuste', descripcion: `Ajuste de stock por revisión de caducidad: ${item.nombre} (Lote: ${item.lote})` }
         };
 
         const accion = acciones[action];
         if (!accion) return;
 
         try {
-            const fecha = new Date().toISOString().replace('T', ' ').slice(0, 19);
-            
-            let updatedItem = item;
-            if (['baja', 'salida', 'ajuste'].includes(action)) {
-                const operation = await app.apiRequest('/api/index?action=operacion', {
-                    method: 'POST',
-                    body: JSON.stringify({ tipo: action, medicamento_id: item.id, cantidad })
-                });
-                updatedItem = app.normalizeRecord(operation.medicamento);
-                if (operation.actividad) app.data.actividades.unshift(app.normalizeRecord(operation.actividad));
-                app.persistCachedData();
-                app.data.medicamentos = app.data.medicamentos.map(current => current.id == id ? updatedItem : current);
-            } else {
-                await app.apiRequest('/api/index?action=actividades', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        tipo: accion.tipo,
-                        medicamento_id: item.id,
-                        medicamento: item.nombre,
-                        lote: '',
-                        cantidad: item.cantidad,
-                        descripcion: accion.descripcion,
-                        fecha
-                    })
-                });
+            await app.fetchAPI(app.apiBase + '?action=actividades', {
+                method: 'POST',
+                body: JSON.stringify({
+                    ...accion,
+                    medicamentoId: item.id,
+                    medicamento: item.nombre,
+                    lote: item.lote,
+                    cantidad: item.cantidad,
+                    fecha: new Date().toISOString(),
+                    usuario: 'Usuario Actual'
+                })
+            });
+
+            if (action === 'baja') {
+                app.data.medicamentos = app.data.medicamentos.filter(m => m.id != id);
             }
 
             app.showAlert(`Acción "${action}" registrada correctamente`, 'success');
@@ -396,17 +379,21 @@ const PorCaducarView = {
         const items = this.getExpiryItems(medicamentos);
         const filtered = this.filterItems(items);
 
-        const headers = ['Nombre', 'Tipo', 'Presentación', 'Concentración', 'Fecha Caducidad', 'Días Restantes', 'Estado', 'Cantidad', 'Unidad', 'Requiere Receta', 'Controlado', 'Observaciones'];
+        const headers = ['Nombre', 'Tipo', 'Lote', 'Laboratorio', 'Presentación', 'Concentración', 'Fecha Caducidad', 'Días Restantes', 'Estado', 'Cantidad', 'Unidad', 'Ubicación', 'Temperatura', 'Requiere Receta', 'Controlado', 'Observaciones'];
         const rows = filtered.map(item => [
             item.nombre,
             item.tipo === 'vacuna' ? 'Vacuna' : 'Medicamento',
+            item.lote,
+            item.laboratorio || '',
             item.presentacion || '',
             item.concentracion || '',
             App.formatDate(item.fechaCaducidad),
             item.days,
             item.status.label,
             item.cantidad,
-            item.unidad || 'frascos',
+            item.unidad || 'unidades',
+            item.ubicacion || '',
+            item.temperatura || '',
             item.requiereReceta ? 'Sí' : 'No',
             item.esControlado ? 'Sí' : 'No',
             item.observaciones || ''

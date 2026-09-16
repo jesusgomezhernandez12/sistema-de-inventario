@@ -1,46 +1,25 @@
-# Inventario de medicamentos y vacunas
+🐄 Sistema de Inventario Ganadero — Medicamentos y Vacunas
+El Sistema de Inventario Ganadero es una aplicación web progresiva y modular diseñada para la gestión, control en tiempo real y trazabilidad de insumos veterinarios, medicamentos y vacunas en ranchos, fincas y explotaciones ganaderas.
 
-Aplicación web de inventario desplegable en Vercel, con Supabase como base de datos y una API Node protegida por token.
-
-## Configuración de Supabase
-
-1. Abre el **SQL Editor** de tu proyecto Supabase.
-2. Copia y ejecuta completo el archivo [`supabase/schema.sql`](supabase/schema.sql).
-3. El script crea las tablas, índices, una operación atómica para reducir stock y tres usuarios de demostración:
-
-   - `admin@ganadero.com` / `admin123`
-   - `vet@ganadero.com` / `vet123`
-   - `tecnico@ganadero.com` / `tecnico123`
-
-   Cambia esas contraseñas antes de usar la aplicación en producción.
-
-## Variables de entorno
-
-Copia `.env.example` como `.env` y completa estas variables:
-
-```env
-SUPABASE_URL=https://tu-proyecto.supabase.co
-SUPABASE_SECRET_KEY=sb_secret_...
-JWT_SECRET=un-secreto-largo-y-aleatorio
-```
-
-`SUPABASE_SECRET_KEY` solamente se usa dentro de la función del servidor. Nunca la expongas en archivos JavaScript, en el navegador o en Git.
-
-## Desplegar en Vercel
-
-1. Sube este repositorio a GitHub y crea/importa el proyecto en Vercel.
-2. En **Settings → Environment Variables**, agrega `SUPABASE_URL`, `SUPABASE_SECRET_KEY` y, de forma recomendada, `JWT_SECRET` para Production, Preview y Development.
-3. Despliega. Vercel detecta `api/index.js` como función Node y `vercel.json` redirige las solicitudes `/api` a esa función.
-
-No hay paso de build obligatorio.
-
-## Rutas internas
-
-- `POST /api?action=login`
-- `GET /api?action=check`
-- `GET|POST /api?action=medicamentos`
-- `GET|POST /api?action=actividades`
-- `GET /api?action=stats`
-- `POST /api?action=operacion`
-
-La aplicación usa la función `operar_inventario` de PostgreSQL para evitar que dos reducciones simultáneas dejen el stock en negativo.
+🌟 Características Principales
+1. 📊 Dashboard e Indicadores Clave
+Métricas en tiempo real: Visualización del total de medicamentos, vacunas registradas, productos próximos a caducar (en menos de 90 días) y productos caducados.
+Bitácora de actividad reciente: Feed cronológico de los últimos movimientos del sistema.
+Alertas prioritarias: Identificación visual inmediata del estado de vencimiento por código de colores (crítico, advertencia y vigente).
+2. 📦 Gestión de Stock e Inventario
+Vistas dinámicas: Catálogo de productos con fotografía, presentación, concentración, unidad de medida y stock disponible.
+Modo "Terminados": Filtro especializado para consultar los productos agotados o terminados durante los últimos 7 días.
+Filtrado multicriterio: Búsqueda por texto en tiempo real y filtrado por tipo (Medicamentos vs. Vacunas).
+Operaciones de stock: Reducción atómica de stock mediante modales interactivos para evitar inventario en negativo.
+3. 📷 Nuevo Registro con Carga de Imágenes
+Alta de insumos: Registro detallado con nombre, tipo, presentación, concentración, cantidad, fecha de ingreso y fecha de caducidad.
+Soporte multimedia: Carga de imágenes (PNG, JPG, WebP) con vista previa en tiempo real y almacenamiento codificado.
+Clasificación especial: Indicadores para medicamentos de receta obligatoria y productos controlados.
+4. ⏳ Control de Vencimientos y Bajas
+Monitoreo de caducidad: Filtros por rango de días (0 días, 30 días, 90 días, 180 días).
+Fotografía e identificación visual: Muestra de miniatura en tabla y tarjeta extendida en modal.
+Baja atómica: Botón directo para eliminar el stock del producto vencido, actualizar la base de datos y generar el registro de auditoría.
+Exportación de datos: Descarga de reportes en formato CSV / Excel para auditorías sanitarias.
+5. 📜 Bitácora de Actividades Automática
+Auditoría transparente: Registro automatizado de cada evento (Entrada, Salida, Ajuste, Caducidad y Baja).
+Detalle de operación: Identificación de fecha, hora, usuario responsable, lote afectado y descripción del evento.

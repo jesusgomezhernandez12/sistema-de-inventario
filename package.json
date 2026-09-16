@@ -8,7 +8,6 @@
   },
   "scripts": {
     "dev": "node dev-server.mjs",
-    "build": "echo 'Static build'",
     "start": "node dev-server.mjs"
   },
   "dependencies": {

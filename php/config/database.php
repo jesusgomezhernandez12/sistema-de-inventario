@@ -6,16 +6,11 @@ class Database {
     private $lastInsertId = null;
     
     private function __construct() {
-        $this->url = $_ENV['TURSO_DATABASE_URL'] ?? 'libsql://inventario-ganadero-jesusgomezhernandez12.aws-us-west-2.turso.io';
-        $this->token = $_ENV['TURSO_AUTH_TOKEN'] ?? '';
+        $this->url = $_ENV['TURSO_DATABASE_URL'] ?? getenv('TURSO_DATABASE_URL') ?: '';
+        $this->token = $_ENV['TURSO_AUTH_TOKEN'] ?? getenv('TURSO_AUTH_TOKEN') ?: '';
         
-        if (empty($this->token)) {
-            // Try loading from .env if not set
-            if (file_exists(__DIR__ . '/../../.env')) {
-                $env = parse_ini_file(__DIR__ . '/../../.env');
-                $this->token = $env['TURSO_AUTH_TOKEN'] ?? '';
-                $this->url = $env['TURSO_DATABASE_URL'] ?? $this->url;
-            }
+        if (empty($this->url) || empty($this->token)) {
+            throw new Exception('TURSO_DATABASE_URL y TURSO_AUTH_TOKEN requeridos en .env');
         }
     }
     
@@ -35,13 +30,28 @@ class Database {
     }
     
     private function tursoRequest($sql, $args = []) {
+        $tursoArgs = [];
+        foreach ($args as $arg) {
+            if (is_null($arg)) {
+                $tursoArgs[] = ['type' => 'null'];
+            } elseif (is_int($arg)) {
+                $tursoArgs[] = ['type' => 'integer', 'value' => $arg];
+            } elseif (is_float($arg)) {
+                $tursoArgs[] = ['type' => 'real', 'value' => $arg];
+            } elseif (is_bool($arg)) {
+                $tursoArgs[] = ['type' => 'integer', 'value' => $arg ? 1 : 0];
+            } else {
+                $tursoArgs[] = ['type' => 'text', 'value' => (string)$arg];
+            }
+        }
+        
         $payload = [
             'requests' => [
                 [
                     'type' => 'execute',
                     'stmt' => [
                         'sql' => $sql,
-                        'args' => $args
+                        'args' => $tursoArgs
                     ]
                 ]
             ]
@@ -67,7 +77,73 @@ class Database {
             throw new Exception('Turso error: ' . $data['error']);
         }
         
-        return $data['results'][0] ?? null;
+        $result = $data['results'][0] ?? null;
+        if (!is_array($result)) {
+            return null;
+        }
+        
+        if (isset($result['error'])) {
+            throw new Exception('Turso error: ' . $result['error']);
+        }
+        
+        // Navigate: results[0].response.result → cols/rows/affected_row_count
+        $resp = $result;
+        if (isset($result['type']) && $result['type'] === 'ok' && isset($result['response'])) {
+            $resp = $result['response'];
+            if (isset($resp['result']) && is_array($resp['result'])) {
+                $resp = $resp['result'];
+            }
+        }
+        
+        // Response can be either an array (with cols/rows) or a string (for some types)
+        if (is_array($resp)) {
+            $result = [
+                'cols' => $resp['cols'] ?? [],
+                'rows' => $resp['rows'] ?? [],
+                'rowsAffected' => $resp['affected_row_count'] ?? 0,
+                'lastInsertRowid' => $resp['last_insert_rowid'] ?? null
+            ];
+        }
+        
+        // Convert rows from Turso's typed format to plain PHP values
+        if (isset($result['rows'])) {
+            $result['rows'] = $this->decodeRows($result['rows'], $result['cols']);
+        }
+        
+        return $result;
+    }
+    
+    private function decodeRows($rows, $cols) {
+        if (empty($rows)) return [];
+        
+        $decoded = [];
+        $colNames = [];
+        foreach (($cols ?? []) as $col) {
+            $colNames[] = $col['name'] ?? null;
+        }
+        
+        foreach ($rows as $rowIndex => $row) {
+            $decodedRow = [];
+            foreach ($row as $colIndex => $val) {
+                if (is_array($val) && isset($val['type'])) {
+                    $decodedValue = match($val['type']) {
+                        'integer' => (int)($val['value'] ?? 0),
+                        'real' => (float)($val['value'] ?? 0.0),
+                        'text' => (string)($val['value'] ?? ''),
+                        'null' => null,
+                        default => $val['value'] ?? null
+                    };
+                } else {
+                    $decodedValue = $val;
+                }
+                
+                $key = $colNames[$colIndex] ?? $colIndex;
+                $decodedRow[$key] = $decodedValue;
+            }
+            $decoded[] = $decodedRow;
+        }
+        
+        return $decoded;
     }
     
     public function prepare($sql) {
@@ -95,8 +171,11 @@ class Database {
         return $this->lastInsertId;
     }
     
+    public function setLastInsertId($id) {
+        $this->lastInsertId = $id;
+    }
+    
     public function beginTransaction() {
-        // Turso supports batch operations for transactions
         return true;
     }
     
@@ -110,6 +189,13 @@ class Database {
     
     public function prepareAndExecute($sql, $params = []) {
         return $this->tursoRequest($sql, $params);
+    }
+    
+    public function lastInsertRowid() {
+        $stmt = $this->prepare("SELECT last_insert_rowid() as id");
+        $stmt->execute();
+        $row = $stmt->fetch();
+        return $row ? ($row['id'] ?? null) : null;
     }
 }
 
@@ -126,6 +212,9 @@ class TursoStatement {
     public function execute($params = []) {
         $result = $this->db->prepareAndExecute($this->sql, $params);
         $this->result = $result;
+        if ($result) {
+            $this->db->setLastInsertId($result['lastInsertRowid'] ?? null);
+        }
         return true;
     }
     
@@ -148,7 +237,7 @@ class TursoStatement {
             return false;
         }
         $row = $this->result['rows'][0];
-        return reset($row);
+        return !empty($row) ? reset($row) : false;
     }
     
     public function rowCount() {
@@ -186,6 +275,14 @@ class TursoResult {
             return false;
         }
         $row = $this->rows[0];
-        return reset($row);
+        return !empty($row) ? reset($row) : false;
+    }
+    
+    public function getLastInsertId() {
+        return $this->lastInsertId;
+    }
+    
+    public function getRowsAffected() {
+        return $this->rowsAffected;
     }
 }

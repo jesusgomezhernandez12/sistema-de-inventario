@@ -10,20 +10,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Load .env if available
-if (file_exists(__DIR__ . '/../.env.php')) {
-    $env = parse_ini_file(__DIR__ . '/../.env.php');
-    foreach ($env as $k => $v) $_ENV[$k] = $v;
-}
-
-// Load .env as INI
-if (file_exists(__DIR__ . '/../.env')) {
-    $lines = file(__DIR__ . '/../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+if (file_exists(__DIR__ . '/../../.env')) {
+    $lines = file(__DIR__ . '/../../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         if (strpos($line, '#') === 0) continue;
         if (strpos($line, '=') === false) continue;
         list($key, $val) = explode('=', $line, 2);
         $_ENV[trim($key)] = trim($val);
     }
+}
+
+// Also try env vars from server environment
+if (!isset($_ENV['TURSO_AUTH_TOKEN']) || empty($_ENV['TURSO_AUTH_TOKEN'])) {
+    $_ENV['TURSO_AUTH_TOKEN'] = getenv('TURSO_AUTH_TOKEN') ?: $_SERVER['TURSO_AUTH_TOKEN'] ?? '';
+}
+if (!isset($_ENV['TURSO_DATABASE_URL']) || empty($_ENV['TURSO_DATABASE_URL'])) {
+    $_ENV['TURSO_DATABASE_URL'] = getenv('TURSO_DATABASE_URL') ?: $_SERVER['TURSO_DATABASE_URL'] ?? '';
 }
 
 require_once __DIR__ . '/../config/database.php';
@@ -41,7 +43,7 @@ if (isset($pathParts[0]) && $pathParts[0] === 'api' && isset($pathParts[1])) {
 }
 
 // Check auth for protected actions
-if (!in_array($action, ['login', 'stats']) && $action !== '') {
+if (!in_array($action, ['login', 'stats', 'check']) && $action !== '') {
     $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (strpos($authHeader, 'Bearer ') !== 0) {
         http_response_code(401);
@@ -75,6 +77,9 @@ try {
             break;
         case 'check':
             handleCheck();
+            break;
+        case 'operacion':
+            handleOperacion($db);
             break;
         default:
             http_response_code(404);
@@ -175,9 +180,7 @@ function handleMedicamentos($db, $method) {
                     $params[] = $tipo;
                 }
 
-                $stmt = $db->prepare("SELECT * FROM medicamentos $where ORDER BY fecha_caducidad ASC LIMIT ? OFFSET ?");
-                $params[] = $limit;
-                $params[] = $offset;
+                $stmt = $db->prepare("SELECT * FROM medicamentos $where ORDER BY fecha_caducidad ASC LIMIT $limit OFFSET $offset");
                 $stmt->execute($params);
                 $medicamentos = $stmt->fetchAll();
                 
@@ -375,12 +378,6 @@ function handleActividades($db, $method) {
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch());
             break;
-    }
-}
-
-        case 'operacion':
-            handleOperacion($db);
-            return;
     }
 }
 

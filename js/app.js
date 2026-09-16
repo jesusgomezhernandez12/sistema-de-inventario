@@ -7,7 +7,7 @@ const App = {
         actividades: [],
         stats: {}
     },
-    apiBase: '/php/api/index.php',
+    apiBase: '/api/index',
 
     init() {
         this.bindEvents();
@@ -18,7 +18,7 @@ const App = {
     },
 
     checkAuth() {
-        if (!this.token && window.location.pathname.includes('index.html')) {
+        if (!this.token) {
             window.location.href = 'login.html';
             return;
         }
@@ -85,6 +85,7 @@ const App = {
 
     async fetchAPI(endpoint, options = {}) {
         const headers = { 'Content-Type': 'application/json' };
+        this.token = localStorage.getItem('inventario_token') || null;
         if (this.token) {
             headers['Authorization'] = 'Bearer ' + this.token;
         }
@@ -92,7 +93,16 @@ const App = {
             headers,
             ...options
         });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+            let message = `HTTP error! status: ${response.status}`;
+            try {
+                const body = await response.json();
+                message = body.error || message;
+            } catch {
+                // La respuesta no siempre es JSON (por ejemplo, un error del servidor web).
+            }
+            throw new Error(message);
+        }
         return response.json();
     },
 
@@ -143,6 +153,7 @@ const App = {
         const titles = {
             dashboard: 'Dashboard',
             'nuevo-registro': 'Nuevo Registro',
+            stock: 'Stock',
             'registro-actividades': 'Registro de Actividades',
             'por-caducar': 'Medicamentos por Caducar'
         };
@@ -161,6 +172,10 @@ const App = {
             case 'nuevo-registro':
                 container.innerHTML = NuevoRegistroView.render(this.data);
                 NuevoRegistroView.bindEvents(this);
+                break;
+            case 'stock':
+                container.innerHTML = StockView.render(this.data);
+                StockView.bindEvents(this);
                 break;
             case 'registro-actividades':
                 container.innerHTML = RegistroActividadesView.render(this.data);
@@ -233,6 +248,16 @@ const App = {
     getAlertIcon(type) {
         const icons = { success: 'check-circle', warning: 'exclamation-triangle', danger: 'times-circle', info: 'info-circle' };
         return icons[type] || 'info-circle';
+    },
+
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, character => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        })[character]);
     },
 
     formatDate(dateString) {

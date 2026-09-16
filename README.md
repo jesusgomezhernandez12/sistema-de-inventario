@@ -1,135 +1,46 @@
-# Sistema de Inventario Digital de Medicamentos y Vacunas
+# Inventario de medicamentos y vacunas
 
-Sistema web frontend para la gestión de inventario de medicamentos y vacunas, desarrollado con PHP, JavaScript y CSS.
+Aplicación web de inventario desplegable en Vercel, con Supabase como base de datos y una API Node protegida por token.
 
-## Características
+## Configuración de Supabase
 
-- **Dashboard**: Vista general con estadísticas, actividad reciente y alertas de caducidad
-- **Nuevo Registro**: Formulario completo para registrar medicamentos y vacunas
-- **Registro de Actividades**: Historial de entradas, salidas, ajustes, caducidades y bajas con filtros y paginación
-- **Medicamentos por Caducar**: Lista detallada con filtros por rango de días, exportación a CSV y acciones rápidas
+1. Abre el **SQL Editor** de tu proyecto Supabase.
+2. Copia y ejecuta completo el archivo [`supabase/schema.sql`](supabase/schema.sql).
+3. El script crea las tablas, índices, una operación atómica para reducir stock y tres usuarios de demostración:
 
-## Tecnologías
+   - `admin@ganadero.com` / `admin123`
+   - `vet@ganadero.com` / `vet123`
+   - `tecnico@ganadero.com` / `tecnico123`
 
-- **Frontend**: HTML5, CSS3 (CSS Variables, Grid, Flexbox), JavaScript ES6+ (Módulos)
-- **Backend**: PHP 8+ (API REST simple)
-- **Base de Datos**: MySQL/MariaDB
-- **Iconos**: Font Awesome 6
-- **Fuente**: Inter (Google Fonts)
+   Cambia esas contraseñas antes de usar la aplicación en producción.
 
-## Estructura del Proyecto
+## Variables de entorno
 
-```
-sistema-de-inventario/
-├── index.php                 # Punto de entrada principal
-├── css/
-│   └── styles.css           # Estilos principales
-├── js/
-│   ├── app.js               # Aplicación principal (routing, estado, utilidades)
-│   └── views/
-│       ├── dashboard.js     # Vista Dashboard
-│       ├── nuevo-registro.js # Vista Nuevo Registro
-│       ├── registro-actividades.js # Vista Registro de Actividades
-│       └── por-caducar.js   # Vista Medicamentos por Caducar
-├── php/
-│   ├── api/
-│   │   └── index.php        # Endpoints API REST
-│   ├── config/
-│   │   └── database.php     # Configuración de base de datos
-│   └── schema.sql           # Esquema de base de datos
-└── assets/
-    └── images/              # Imágenes y recursos estáticos
-```
-
-## Instalación
-
-### Requisitos
-
-- PHP 8.0+
-- MySQL 5.7+ / MariaDB 10.3+
-- Servidor web (Apache/Nginx) o PHP built-in server
-
-### 1. Configurar Base de Datos
-
-```bash
-# Crear la base de datos y tablas
-mysql -u root -p < php/schema.sql
-```
-
-### 2. Configurar Conexión
-
-Edita `php/config/database.php` o crea un archivo `.env` en la raíz:
+Copia `.env.example` como `.env` y completa estas variables:
 
 ```env
-DB_HOST=localhost
-DB_NAME=inventario_medicamentos
-DB_USER=tu_usuario
-DB_PASS=tu_password
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_...
+JWT_SECRET=un-secreto-largo-y-aleatorio
 ```
 
-### 3. Iniciar Servidor
+`SUPABASE_SECRET_KEY` solamente se usa dentro de la función del servidor. Nunca la expongas en archivos JavaScript, en el navegador o en Git.
 
-**Opción A: PHP Built-in Server (Desarrollo)**
-```bash
-php -S localhost:8000
-```
+## Desplegar en Vercel
 
-**Opción B: Apache/Nginx**
-Configura el DocumentRoot apuntando a la carpeta del proyecto.
+1. Sube este repositorio a GitHub y crea/importa el proyecto en Vercel.
+2. En **Settings → Environment Variables**, agrega `SUPABASE_URL`, `SUPABASE_SECRET_KEY` y, de forma recomendada, `JWT_SECRET` para Production, Preview y Development.
+3. Despliega. Vercel detecta `api/index.js` como función Node y `vercel.json` redirige las solicitudes `/api` a esa función.
 
-### 4. Acceder
+No hay paso de build obligatorio.
 
-Abre `http://localhost:8000` en tu navegador.
+## Rutas internas
 
-## API Endpoints
+- `POST /api?action=login`
+- `GET /api?action=check`
+- `GET|POST /api?action=medicamentos`
+- `GET|POST /api?action=actividades`
+- `GET /api?action=stats`
+- `POST /api?action=operacion`
 
-### Medicamentos
-- `GET /php/api/index.php?action=medicamentos` - Listar (con paginación, búsqueda, filtro por tipo)
-- `GET /php/api/index.php?action=medicamentos&id=1` - Obtener uno
-- `POST /php/api/index.php?action=medicamentos` - Crear
-- `PUT /php/api/index.php?action=medicamentos&id=1` - Actualizar
-- `DELETE /php/api/index.php?action=medicamentos&id=1` - Eliminar
-
-### Actividades
-- `GET /php/api/index.php?action=actividades` - Listar
-- `GET /php/api/index.php?action=actividades&id=1` - Obtener una
-- `POST /php/api/index.php?action=actividades` - Crear
-
-### Estadísticas
-- `GET /php/api/index.php?action=stats` - Obtener estadísticas del dashboard
-
-## Funcionalidades Principales
-
-### Dashboard
-- 4 tarjetas de estadísticas: Total Medicamentos, Total Vacunas, Próximos a Caducar, Caducados
-- Actividad reciente (últimas 5)
-- Alertas de caducidad (próximos 90 días)
-
-### Nuevo Registro
-- Formulario validado (cliente y servidor)
-- Campos: Nombre, Tipo (Medicamento/Vacuna), Lote, Laboratorio, Presentación, Concentración, Cantidad, Unidad, Fechas, Ubicación, Temperatura, Observaciones
-- Checkboxes: Requiere receta, Medicamento controlado
-
-### Registro de Actividades
-- Tabla con paginación
-- Filtros: Búsqueda texto, Tipo de actividad, Rango de fechas
-- Modal para nueva actividad
-- Modal de detalle
-
-### Medicamentos por Caducar
-- 4 tarjetas de resumen: Caducados, Críticos (≤30 días), Advertencia (31-90), Vigentes (>90)
-- Tabla con paginación y ordenación por fecha
-- Filtros: Búsqueda, Rango de días (0, 30, 90, 180, Todos), Estado
-- Exportación a CSV
-- Acciones por fila: Baja, Generar Alerta, Registrar Salida, Ajustar Stock
-
-## Responsive
-
-- Sidebar colapsable en móviles (< 1024px)
-- Tablas con scroll horizontal
-- Formularios adaptables
-- Modales responsivos
-
-## Licencia
-
-MIT
+La aplicación usa la función `operar_inventario` de PostgreSQL para evitar que dos reducciones simultáneas dejen el stock en negativo.

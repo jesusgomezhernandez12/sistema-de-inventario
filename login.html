@@ -273,7 +273,7 @@
             btn.innerHTML = '<span class="spinner"></span> Iniciando sesión...';
             
             try {
-                const response = await fetch('/php/api/index.php?action=login', {
+                const response = await fetch('/api/index?action=login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -310,7 +310,7 @@
             const token = localStorage.getItem('inventario_token');
             if (token) {
                 try {
-                    const response = await fetch('/php/api/index.php?action=check', {
+                    const response = await fetch('/api/index?action=check', {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const result = await response.json();

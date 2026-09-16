@@ -27,19 +27,6 @@ const NuevoRegistroView = {
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label class="form-label">Lote <span class="required">*</span></label>
-                                    <input type="text" class="form-input" name="lote" id="lote" placeholder="Ej: LOT-2024-001" required>
-                                    <div class="form-error" id="lote-error"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Laboratorio <span class="required">*</span></label>
-                                    <input type="text" class="form-input" name="laboratorio" id="laboratorio" placeholder="Ej: Laboratorios Pfizer" required>
-                                    <div class="form-error" id="laboratorio-error"></div>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
                                     <label class="form-label">Presentación</label>
                                     <input type="text" class="form-input" name="presentacion" id="presentacion" placeholder="Ej: Caja x 20 tabletas">
                                 </div>
@@ -76,17 +63,6 @@ const NuevoRegistroView = {
                                 <div class="form-group">
                                     <label class="form-label">Fecha de Ingreso</label>
                                     <input type="date" class="form-input" name="fechaIngreso" id="fechaIngreso" value="${this.getToday()}">
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Ubicación/Almacén</label>
-                                    <input type="text" class="form-input" name="ubicacion" id="ubicacion" placeholder="Ej: Almacén A - Estante 3">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Temperatura de Almacenamiento</label>
-                                    <input type="text" class="form-input" name="temperatura" id="temperatura" placeholder="Ej: 2-8°C, Ambiente">
                                 </div>
                             </div>
 

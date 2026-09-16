@@ -947,6 +947,105 @@ input, select, textarea {
     gap: 0.5rem;
 }
 
+/* Stock */
+.stock-toolbar {
+    display: flex;
+    align-items: end;
+    gap: 0.75rem;
+}
+
+.stock-toolbar .form-group {
+    flex: 1;
+    margin: 0;
+}
+
+.stock-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.stock-product {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: white;
+    padding: 1rem;
+}
+
+.stock-product-info {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 0.35rem 1rem;
+    align-items: center;
+}
+
+.stock-product-image {
+    grid-row: span 4;
+    width: 88px;
+    height: 88px;
+    border-radius: var(--radius);
+    object-fit: cover;
+    background: var(--gray-100);
+}
+
+.stock-product-image-placeholder {
+    display: grid;
+    place-items: center;
+    color: var(--gray-400);
+    font-size: 1.75rem;
+}
+
+.stock-product h3,
+.stock-product p {
+    margin: 0;
+}
+
+.stock-product h3 { color: var(--gray-900); font-size: 1rem; }
+.stock-product p { color: var(--gray-600); font-size: 0.875rem; }
+.stock-product-type { color: var(--primary); font-size: 0.875rem; font-weight: 600; }
+.stock-available { color: var(--gray-700); font-size: 0.875rem; }
+
+.stock-selection-grid {
+    display: grid;
+    gap: 0.5rem;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.stock-selection-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.stock-selection-option:has(input:checked) {
+    border-color: var(--primary);
+    background: rgba(37, 99, 235, 0.06);
+}
+
+.stock-selection-option input { accent-color: var(--primary); }
+.stock-selection-option img,
+.stock-selection-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: var(--gray-100);
+}
+.stock-selection-placeholder { display: grid; place-items: center; color: var(--gray-400); }
+.stock-selection-details { display: grid; gap: 0.15rem; }
+.stock-selection-details small { color: var(--gray-500); }
+
+@media (max-width: 768px) {
+    .stock-toolbar { align-items: stretch; flex-direction: column; }
+    .stock-list { grid-template-columns: 1fr; }
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .sidebar {

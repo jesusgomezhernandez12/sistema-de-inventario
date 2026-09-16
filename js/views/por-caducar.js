@@ -142,11 +142,13 @@ const PorCaducarView = {
     },
 
     getExpiryItems(medicamentos) {
-        return medicamentos.map(m => {
-            const days = App.daysUntilExpiry(m.fechaCaducidad);
-            const status = App.getExpiryStatus(days);
-            return { ...m, days, status };
-        });
+        return medicamentos
+            .filter(m => Number(m.cantidad) > 0)
+            .map(m => {
+                const days = App.daysUntilExpiry(m.fechaCaducidad);
+                const status = App.getExpiryStatus(days);
+                return { ...m, days, status };
+            });
     },
 
     calculateStats(items) {
@@ -214,26 +216,32 @@ const PorCaducarView = {
         const tipoIcon = item.tipo === 'vacuna' ? 'fa-syringe' : 'fa-pills';
         const tipoLabel = item.tipo === 'vacuna' ? 'Vacuna' : 'Medicamento';
         const tipoClass = item.tipo === 'vacuna' ? 'badge-primary' : 'badge-info';
+        const imageSrc = item.imagen_url || item.imagenUrl;
 
         return `
             <tr style="${item.days < 0 ? 'background: rgba(239, 68, 68, 0.03);' : ''}">
                 <td>
-                    <div style="font-weight: 500;">${item.nombre}</div>
-                    <div style="font-size: 0.75rem; color: var(--gray-500);">${item.presentacion || ''} ${item.concentracion || ''}</div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        ${imageSrc ? `<img src="${App.escapeHtml(imageSrc)}" alt="" style="width: 42px; height: 42px; border-radius: 6px; object-fit: cover; border: 1px solid var(--gray-200); flex-shrink: 0;">` : `<div style="width: 42px; height: 42px; border-radius: 6px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; color: var(--gray-400); flex-shrink: 0;"><i class="fas ${tipoIcon}"></i></div>`}
+                        <div>
+                            <div style="font-weight: 500;">${App.escapeHtml(item.nombre)}</div>
+                            <div style="font-size: 0.75rem; color: var(--gray-500);">${App.escapeHtml(item.presentacion || '')} ${App.escapeHtml(item.concentracion || '')}</div>
+                        </div>
+                    </div>
                 </td>
                 <td><span class="badge ${tipoClass}"><i class="fas ${tipoIcon} mr-1"></i>${tipoLabel}</span></td>
-                <td><code style="font-size: 0.8125rem;">${item.lote}</code></td>
-                <td>${item.laboratorio || '-'}</td>
+                <td><code style="font-size: 0.8125rem;">${App.escapeHtml(item.lote || '-')}</code></td>
+                <td>${App.escapeHtml(item.laboratorio || '-')}</td>
                 <td>${App.formatDate(item.fechaCaducidad)}</td>
                 <td>
                     <span class="expiry-days ${item.status.class}">${item.status.label}</span>
                 </td>
-                <td>${item.cantidad} ${item.unidad || 'unidades'}</td>
-                <td>${item.ubicacion || '-'}</td>
+                <td>${App.escapeHtml(item.cantidad)} ${App.escapeHtml(item.unidad || 'unidades')}</td>
+                <td>${App.escapeHtml(item.ubicacion || '-')}</td>
                 <td>
                     <div class="expiry-actions">
-                        <button class="btn btn-icon btn-secondary" data-action="acciones" data-id="${item.id}" title="Acciones">
-                            <i class="fas fa-ellipsis-v"></i>
+                        <button class="btn btn-icon btn-danger" data-action="acciones" data-id="${item.id}" title="Dar de Baja">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
                 </td>
@@ -293,33 +301,34 @@ const PorCaducarView = {
 
         const days = App.daysUntilExpiry(item.fechaCaducidad);
         const status = App.getExpiryStatus(days);
+        const imageSrc = item.imagen_url || item.imagenUrl;
 
         const content = document.getElementById('modal-accion-content');
         if (content) {
             content.innerHTML = `
                 <div style="padding: 0.5rem 0;">
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--gray-200);">
-                        <div class="stat-icon ${status.class === 'critical' ? 'red' : status.class === 'warning' ? 'yellow' : 'blue'}" style="width: 48px; height: 48px;">
-                            <i class="fas ${item.tipo === 'vacuna' ? 'fa-syringe' : 'fa-pills'}"></i>
-                        </div>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--gray-200);">
+                        ${imageSrc ? `<img src="${App.escapeHtml(imageSrc)}" alt="" style="width: 56px; height: 56px; border-radius: 8px; object-fit: cover; border: 1px solid var(--gray-200); flex-shrink: 0;">` : `
+                            <div class="stat-icon ${status.class === 'critical' ? 'red' : status.class === 'warning' ? 'yellow' : 'blue'}" style="width: 56px; height: 56px; border-radius: 8px; font-size: 1.5rem; flex-shrink: 0;">
+                                <i class="fas ${item.tipo === 'vacuna' ? 'fa-syringe' : 'fa-pills'}"></i>
+                            </div>
+                        `}
                         <div>
-                            <div style="font-weight: 600;">${item.nombre}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-500);">Lote: ${item.lote} | ${App.formatDate(item.fechaCaducidad)}</div>
-                            <span class="expiry-days ${status.class}">${status.label}</span>
+                            <div style="font-weight: 600; font-size: 1.1rem; color: var(--gray-900);">${App.escapeHtml(item.nombre)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500); margin-top: 0.15rem;">
+                                Stock actual: <strong>${App.escapeHtml(item.cantidad)} ${App.escapeHtml(item.unidad || 'unidades')}</strong> | Caduca: ${App.formatDate(item.fechaCaducidad)}
+                            </div>
+                            <span class="expiry-days ${status.class}" style="margin-top: 0.35rem; display: inline-block;">${status.label}</span>
                         </div>
                     </div>
+
+                    <p style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 1.25rem;">
+                        Al dar de baja este producto, se establecerá su stock disponible en 0, se eliminará de las listas activas de inventario y se registrará la baja en la base de datos.
+                    </p>
+
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <button class="btn btn-danger" data-action="baja" data-id="${item.id}">
-                            <i class="fas fa-trash"></i> Dar de Baja
-                        </button>
-                        <button class="btn btn-warning" data-action="alerta" data-id="${item.id}">
-                            <i class="fas fa-bell"></i> Generar Alerta
-                        </button>
-                        <button class="btn btn-primary" data-action="salida" data-id="${item.id}">
-                            <i class="fas fa-box-open"></i> Registrar Salida
-                        </button>
-                        <button class="btn btn-secondary" data-action="ajuste" data-id="${item.id}">
-                            <i class="fas fa-edit"></i> Ajustar Stock
+                        <button class="btn btn-danger" data-action="baja" data-id="${item.id}" style="width: 100%; justify-content: center; padding: 0.75rem; font-size: 1rem;">
+                            <i class="fas fa-trash-alt mr-2"></i> Dar de Baja (Eliminar Producto)
                         </button>
                     </div>
                 </div>
@@ -336,41 +345,35 @@ const PorCaducarView = {
         const item = app.data.medicamentos.find(m => m.id == id);
         if (!item) return;
 
-        const acciones = {
-            baja: { tipo: 'baja', descripcion: `Baja por caducidad: ${item.nombre} (Lote: ${item.lote})` },
-            alerta: { tipo: 'caducidad', descripcion: `Alerta de caducidad generada: ${item.nombre} (Lote: ${item.lote})` },
-            salida: { tipo: 'salida', descripcion: `Salida por cercanía a caducidad: ${item.nombre} (Lote: ${item.lote})` },
-            ajuste: { tipo: 'ajuste', descripcion: `Ajuste de stock por revisión de caducidad: ${item.nombre} (Lote: ${item.lote})` }
-        };
-
-        const accion = acciones[action];
-        if (!accion) return;
+        const btn = document.querySelector(`#modal-accion-content button[data-action="${action}"]`);
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Procesando baja...';
+        }
 
         try {
-            await app.fetchAPI(app.apiBase + '?action=actividades', {
+            const result = await app.apiRequest('/api/operacion', {
                 method: 'POST',
                 body: JSON.stringify({
-                    ...accion,
-                    medicamentoId: item.id,
-                    medicamento: item.nombre,
-                    lote: item.lote,
-                    cantidad: item.cantidad,
-                    fecha: new Date().toISOString(),
-                    usuario: 'Usuario Actual'
+                    tipo: 'baja',
+                    medicamento_id: item.id,
+                    cantidad: item.cantidad
                 })
             });
+            const updated = app.normalizeRecord(result.medicamento);
+            app.data.medicamentos = app.data.medicamentos.map(m => m.id == item.id ? updated : m);
+            if (result.actividad) app.data.actividades.unshift(app.normalizeRecord(result.actividad));
+            app.persistCachedData();
 
-            if (action === 'baja') {
-                app.data.medicamentos = app.data.medicamentos.filter(m => m.id != id);
-            }
-
-            app.showAlert(`Acción "${action}" registrada correctamente`, 'success');
+            app.showAlert(`El producto "${item.nombre}" fue dado de baja correctamente`, 'success');
             app.closeModal('modal-accion-caducar');
             app.renderCurrentView();
 
         } catch (error) {
-            console.error('Error al registrar acción:', error);
-            app.showAlert('Error al registrar la acción: ' + error.message, 'danger');
+            console.error('Error al dar de baja:', error);
+            app.showAlert('Error al realizar la baja: ' + error.message, 'danger');
+        } finally {
+            if (btn) btn.disabled = false;
         }
     },
 

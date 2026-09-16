@@ -1,12 +1,21 @@
 import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || SUPABASE_SECRET_KEY);
+function getSupabaseUrl() {
+  return (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+}
+
+function getSupabaseSecretKey() {
+  return process.env.SUPABASE_SECRET_KEY || '';
+}
+
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET || getSupabaseSecretKey();
+  return new TextEncoder().encode(secret);
+}
 
 function configError() {
-  if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+  if (!getSupabaseUrl() || !getSupabaseSecretKey()) {
     throw new Error('Faltan SUPABASE_URL o SUPABASE_SECRET_KEY');
   }
 }
@@ -21,11 +30,13 @@ function error(res, message, status = 400) {
 
 async function supabase(path, options = {}) {
   configError();
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const url = getSupabaseUrl();
+  const secretKey = getSupabaseSecretKey();
+  const response = await fetch(`${url}/rest/v1/${path}`, {
     ...options,
     headers: {
-      apikey: SUPABASE_SECRET_KEY,
-      Authorization: `Bearer ${SUPABASE_SECRET_KEY}`,
+      apikey: secretKey,
+      Authorization: `Bearer ${secretKey}`,
       'Content-Type': 'application/json',
       ...options.headers
     }
@@ -48,14 +59,14 @@ async function createToken(user) {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('2h')
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 async function getUser(req) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return null;
   try {
-    const { payload } = await jwtVerify(header.slice(7), JWT_SECRET);
+    const { payload } = await jwtVerify(header.slice(7), getJwtSecret());
     return payload;
   } catch {
     return null;
@@ -160,6 +171,7 @@ async function createMedicamento(input, user) {
     fecha_caducidad: input.fechaCaducidad,
     fecha_ingreso: input.fechaIngreso || new Date().toISOString().slice(0, 10),
     observaciones: String(input.observaciones || ''),
+    imagen_url: String(input.imagenUrl || input.imagen_url || ''),
     requiere_receta: Boolean(input.requiereReceta),
     es_controlado: Boolean(input.esControlado)
   };

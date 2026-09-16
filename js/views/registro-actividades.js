@@ -53,7 +53,6 @@ const RegistroActividadesView = {
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title"><i class="fas fa-list mr-2"></i>Registro de Actividades (${filtered.length} registros)</h3>
-                        <button class="btn btn-primary" id="btn-nueva-actividad"><i class="fas fa-plus"></i> Nueva Actividad</button>
                     </div>
                     <div class="card-body p-0">
                         ${filtered.length > 0 ? `
@@ -81,67 +80,9 @@ const RegistroActividadesView = {
                             <div class="empty-state">
                                 <i class="fas fa-history"></i>
                                 <h3>No hay actividades registradas</h3>
-                                <p>No se encontraron actividades con los filtros actuales</p>
-                                <button class="btn btn-primary" id="btn-nueva-actividad-empty"><i class="fas fa-plus"></i> Registrar Actividad</button>
+                                <p>No se encontraron actividades con los filtros actuales. Las actividades se registran automáticamente con cada movimiento de inventario.</p>
                             </div>
                         `}
-                    </div>
-                </div>
-
-                <div class="modal-overlay" id="modal-nueva-actividad">
-                    <div class="modal">
-                        <div class="modal-header">
-                            <h3 class="modal-title"><i class="fas fa-plus-circle mr-2"></i>Nueva Actividad</h3>
-                            <button class="modal-close" data-modal="modal-nueva-actividad"><i class="fas fa-times"></i></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="actividad-form" novalidate>
-                                <div class="form-group">
-                                    <label class="form-label">Tipo de Actividad <span class="required">*</span></label>
-                                    <select class="form-input form-select" name="tipo" id="actividad-tipo" required>
-                                        <option value="">Seleccionar tipo</option>
-                                        <option value="entrada">Entrada de stock</option>
-                                        <option value="salida">Salida de stock</option>
-                                        <option value="ajuste">Ajuste de inventario</option>
-                                        <option value="caducidad">Reporte de caducidad</option>
-                                        <option value="baja">Baja de producto</option>
-                                    </select>
-                                    <div class="form-error" id="actividad-tipo-error"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Medicamento/Vacuna <span class="required">*</span></label>
-                                    <select class="form-input form-select" name="medicamentoId" id="actividad-medicamento" required>
-                                        <option value="">Seleccionar medicamento</option>
-                                        ${data.medicamentos.map(m => `<option value="${m.id}">${m.nombre} (${m.lote})</option>`).join('')}
-                                    </select>
-                                    <div class="form-error" id="actividad-medicamento-error"></div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label">Cantidad <span class="required">*</span></label>
-                                        <input type="number" class="form-input" name="cantidad" id="actividad-cantidad" min="1" value="1" required>
-                                        <div class="form-error" id="actividad-cantidad-error"></div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Fecha <span class="required">*</span></label>
-                                        <input type="datetime-local" class="form-input" name="fecha" id="actividad-fecha" required>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Descripción <span class="required">*</span></label>
-                                    <textarea class="form-input form-textarea" name="descripcion" id="actividad-descripcion" placeholder="Detalles de la actividad..." required></textarea>
-                                    <div class="form-error" id="actividad-descripcion-error"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Usuario Responsable</label>
-                                    <input type="text" class="form-input" name="usuario" id="actividad-usuario" placeholder="Nombre del usuario" value="Usuario Actual">
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-modal="modal-nueva-actividad">Cancelar</button>
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
-                                </div>
-                            </form>
-                        </div>
                     </div>
                 </div>
 
@@ -239,9 +180,6 @@ const RegistroActividadesView = {
     bindEvents(app) {
         const formFiltros = document.getElementById('filtros-form');
         const btnLimpiar = document.getElementById('btn-limpiar');
-        const btnNuevaActividad = document.getElementById('btn-nueva-actividad');
-        const btnNuevaActividadEmpty = document.getElementById('btn-nueva-actividad-empty');
-        const formActividad = document.getElementById('actividad-form');
 
         if (formFiltros) {
             formFiltros.addEventListener('submit', (e) => {
@@ -261,24 +199,6 @@ const RegistroActividadesView = {
             });
         }
 
-        const openModal = () => {
-            const fechaInput = document.getElementById('actividad-fecha');
-            if (fechaInput) {
-                const now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                fechaInput.value = now.toISOString().slice(0, 16);
-            }
-            app.openModal('modal-nueva-actividad');
-        };
-
-        [btnNuevaActividad, btnNuevaActividadEmpty].forEach(btn => {
-            if (btn) btn.addEventListener('click', openModal);
-        });
-
-        if (formActividad) {
-            formActividad.addEventListener('submit', (e) => this.handleActividadSubmit(e, app));
-        }
-
         document.querySelectorAll('[data-modal]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const modalId = e.currentTarget.dataset.modal;
@@ -296,67 +216,6 @@ const RegistroActividadesView = {
                 app.renderCurrentView();
             });
         });
-    },
-
-    async handleActividadSubmit(e, app) {
-        e.preventDefault();
-        const form = e.target;
-        const btnGuardar = form.querySelector('button[type="submit"]');
-
-        if (!this.validateActividadForm(form)) return;
-
-        btnGuardar.disabled = true;
-        btnGuardar.innerHTML = '<span class="spinner"></span> Guardando...';
-
-        try {
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-            data.cantidad = parseInt(data.cantidad);
-
-            const medicamento = app.data.medicamentos.find(m => m.id == data.medicamentoId);
-            if (medicamento) {
-                data.medicamento = medicamento.nombre;
-                data.lote = medicamento.lote;
-            }
-            data.fecha = new Date(data.fecha).toISOString();
-
-            const response = await app.fetchAPI(app.apiBase + '?action=actividades', {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
-
-            app.showAlert('Actividad registrada exitosamente', 'success');
-            app.data.actividades.unshift(app.normalizeRecord(response));
-            app.closeModal('modal-nueva-actividad');
-            this.currentPage = 1;
-            app.renderCurrentView();
-
-        } catch (error) {
-            console.error('Error al guardar actividad:', error);
-            app.showAlert('Error al registrar la actividad: ' + error.message, 'danger');
-        } finally {
-            btnGuardar.disabled = false;
-            btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar';
-        }
-    },
-
-    validateActividadForm(form) {
-        let isValid = true;
-        const requiredFields = form.querySelectorAll('[required]');
-
-        requiredFields.forEach(field => {
-            const errorEl = document.getElementById(`${field.id}-error`);
-            if (!field.value.trim()) {
-                field.classList.add('error');
-                if (errorEl) errorEl.textContent = 'Este campo es obligatorio';
-                isValid = false;
-            } else {
-                field.classList.remove('error');
-                if (errorEl) errorEl.textContent = '';
-            }
-        });
-
-        return isValid;
     },
 
     showDetalle(id, app) {

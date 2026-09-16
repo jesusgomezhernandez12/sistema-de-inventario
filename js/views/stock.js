@@ -1,32 +1,69 @@
 const StockView = {
-    filters: { busqueda: '' },
+    filters: { busqueda: '', tipo: '', modo: 'disponibles' },
 
     render(data) {
         const products = data.medicamentos
-            .filter(item => Number(item.cantidad) > 0)
-            .filter(item => this.matchesFilters(item))
+            .filter(item => this.matchesFilters(item, data))
             .sort((first, second) => String(first.nombre).localeCompare(String(second.nombre), 'es'));
+
+        const isTerminadosMode = this.filters.modo === 'terminados';
 
         return `
             <div class="fade-in stock-view">
                 <div class="card stock-filters">
                     <div class="card-body">
-                        <form id="stock-filters-form" class="stock-toolbar">
-                            <div class="form-group">
-                                <label class="form-label" for="stock-search">Buscar producto</label>
-                                <input type="search" class="form-input" id="stock-search" name="busqueda" placeholder="Escribe el nombre del producto" value="${App.escapeHtml(this.filters.busqueda)}">
+                        <form id="stock-filters-form" class="stock-toolbar" style="display: flex; flex-direction: column; gap: 1rem; width: 100%;">
+                            <!-- Fila 1: Filtrar por tipo, Buscar producto y Botón Buscar -->
+                            <div style="display: grid; grid-template-columns: minmax(160px, 1fr) minmax(200px, 2fr) auto; gap: 1rem; align-items: end; width: 100%;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label" for="stock-tipo">Filtrar por tipo</label>
+                                    <select class="form-input form-select" id="stock-tipo" name="tipo" style="width: 100%;">
+                                        <option value="">Todos los tipos</option>
+                                        <option value="medicamento" ${this.filters.tipo === 'medicamento' ? 'selected' : ''}>Medicamentos</option>
+                                        <option value="vacuna" ${this.filters.tipo === 'vacuna' ? 'selected' : ''}>Vacunas</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label" for="stock-search">Buscar producto</label>
+                                    <input type="search" class="form-input" id="stock-search" name="busqueda" placeholder="Escribe el nombre del producto..." value="${App.escapeHtml(this.filters.busqueda)}" style="width: 100%;">
+                                </div>
+
+                                <button class="btn btn-primary" type="submit" title="Buscar" style="height: 42px; margin-bottom: 0; padding: 0 1.5rem; justify-content: center;">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
                             </div>
-                            <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button>
-                            <button class="btn btn-danger" type="button" id="btn-reducir-universal"><i class="fas fa-arrow-down"></i> Reducir stock</button>
+
+                            <!-- Fila 2: Botones Terminados, Reducir stock y Limpiar (Distribuidos abarcando todo el ancho) -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; width: 100%; padding-top: 0.75rem; border-top: 1px solid var(--gray-200);">
+                                <button class="btn ${isTerminadosMode ? 'btn-danger' : 'btn-warning'}" type="button" id="btn-terminados" title="Ver productos agotados en la última semana" style="justify-content: center; width: 100%;">
+                                    <i class="fas ${isTerminadosMode ? 'fa-box-open' : 'fa-check-circle'}"></i> ${isTerminadosMode ? 'Ver En Stock' : 'Terminados'}
+                                </button>
+
+                                <button class="btn btn-danger" type="button" id="btn-reducir-universal" style="justify-content: center; width: 100%;">
+                                    <i class="fas fa-arrow-down"></i> Reducir stock
+                                </button>
+
+                                <button class="btn btn-secondary" type="button" id="btn-limpiar-stock" title="Limpiar todos los filtros" style="justify-content: center; width: 100%;">
+                                    <i class="fas fa-undo"></i> Limpiar
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
 
-                    ${products.length ? `<div class="stock-list">${products.map(item => this.renderProduct(item)).join('')}</div>` : `
+                ${isTerminadosMode ? `
+                    <div class="alert alert-warning" style="margin-bottom: 1rem;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Mostrando productos <strong>terminados/agotados</strong> en el lapso de la última semana.</span>
+                    </div>
+                ` : ''}
+
+                ${products.length ? `<div class="stock-list">${products.map(item => this.renderProduct(item)).join('')}</div>` : `
                     <div class="card empty-state">
-                        <i class="fas fa-box-open"></i>
-                        <h3>No hay productos disponibles</h3>
-                        <p>Prueba con otro nombre o registra un producto nuevo.</p>
+                        <i class="fas ${isTerminadosMode ? 'fa-check-circle' : 'fa-box-open'}"></i>
+                        <h3>${isTerminadosMode ? 'No hay productos terminados recientemente' : 'No hay productos disponibles'}</h3>
+                        <p>${isTerminadosMode ? 'No se registraron salidas totales ni agotamiento de stock en los últimos 7 días con los filtros aplicados.' : 'Prueba con otro nombre o registra un producto nuevo.'}</p>
                     </div>
                 `}
 
@@ -88,22 +125,61 @@ const StockView = {
     },
 
     renderProduct(item) {
+        const isTerminado = Number(item.cantidad) <= 0;
         return `
-            <article class="stock-product">
+            <article class="stock-product" style="${isTerminado ? 'border-left: 4px solid var(--danger); background: rgba(239, 68, 68, 0.02);' : ''}">
                 <div class="stock-product-info">
                     ${item.imagen_url ? `<img class="stock-product-image" src="${App.escapeHtml(item.imagen_url)}" alt="Imagen de ${App.escapeHtml(item.nombre)}">` : '<div class="stock-product-image stock-product-image-placeholder" aria-hidden="true"><i class="fas fa-box"></i></div>'}
                     <h3>${App.escapeHtml(item.nombre)}</h3>
                     <span class="stock-product-type">${item.tipo === 'vacuna' ? 'Vacuna' : 'Medicamento'}</span>
                     <p>${App.escapeHtml(item.presentacion || 'Sin presentación')}${item.concentracion ? ` · ${App.escapeHtml(item.concentracion)}` : ''}</p>
-                    <span class="stock-available">Stock disponible: <strong>${App.escapeHtml(item.cantidad)} ${App.escapeHtml(item.unidad || 'unidades')}</strong></span>
+                    <span class="stock-available">
+                        ${isTerminado 
+                            ? '<strong style="color: var(--danger);"><i class="fas fa-times-circle mr-1"></i>Terminado / Sin Stock</strong>' 
+                            : `Stock disponible: <strong>${App.escapeHtml(item.cantidad)} ${App.escapeHtml(item.unidad || 'unidades')}</strong>`}
+                    </span>
                 </div>
             </article>
         `;
     },
 
-    matchesFilters(item) {
-        const search = this.filters.busqueda.toLowerCase();
-        return !search || String(item.nombre || '').toLowerCase().includes(search);
+    matchesFilters(item, data) {
+        const search = (this.filters.busqueda || '').toLowerCase();
+        if (search && !String(item.nombre || '').toLowerCase().includes(search)) {
+            return false;
+        }
+
+        if (this.filters.tipo && item.tipo !== this.filters.tipo) {
+            return false;
+        }
+
+        const cantidad = Number(item.cantidad || 0);
+
+        if (this.filters.modo === 'terminados') {
+            if (cantidad > 0) return false;
+
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            const itemDate = item.updated_at ? new Date(item.updated_at) : (item.created_at ? new Date(item.created_at) : null);
+            let recentInActivities = false;
+            if (data?.actividades) {
+                recentInActivities = data.actividades.some(act => {
+                    const actDate = new Date(act.fecha);
+                    const isThisProduct = (act.medicamentoId && act.medicamentoId == item.id) || 
+                                          (act.medicamento && String(act.medicamento).toLowerCase() === String(item.nombre).toLowerCase());
+                    return isThisProduct && actDate >= sevenDaysAgo;
+                });
+            }
+
+            if (itemDate && itemDate >= sevenDaysAgo) return true;
+            if (recentInActivities) return true;
+            if (!itemDate && (!data?.actividades || !data.actividades.length)) return true;
+
+            return false;
+        } else {
+            return cantidad > 0;
+        }
     },
 
     bindEvents(app) {
@@ -113,10 +189,30 @@ const StockView = {
         const reduceForm = document.getElementById('reduce-stock-form');
         const universalButton = document.getElementById('btn-reducir-universal');
         const continueButton = document.getElementById('continuar-reduccion');
+        const btnTerminados = document.getElementById('btn-terminados');
+        const btnLimpiar = document.getElementById('btn-limpiar-stock');
+        const tipoSelect = document.getElementById('stock-tipo');
 
         form?.addEventListener('submit', event => {
             event.preventDefault();
-            this.filters = Object.fromEntries(new FormData(form).entries());
+            const formData = new FormData(form);
+            this.filters.busqueda = formData.get('busqueda') || '';
+            this.filters.tipo = formData.get('tipo') || '';
+            app.renderCurrentView();
+        });
+
+        tipoSelect?.addEventListener('change', () => {
+            this.filters.tipo = tipoSelect.value;
+            app.renderCurrentView();
+        });
+
+        btnTerminados?.addEventListener('click', () => {
+            this.filters.modo = this.filters.modo === 'terminados' ? 'disponibles' : 'terminados';
+            app.renderCurrentView();
+        });
+
+        btnLimpiar?.addEventListener('click', () => {
+            this.filters = { busqueda: '', tipo: '', modo: 'disponibles' };
             app.renderCurrentView();
         });
 
@@ -125,6 +221,7 @@ const StockView = {
             document.querySelectorAll('input[name="producto-reduccion"]').forEach(input => { input.checked = false; });
             app.openModal('modal-seleccionar-reduccion');
         });
+
         continueButton?.addEventListener('click', () => {
             const selected = document.querySelector('input[name="producto-reduccion"]:checked');
             const productId = selected?.value;
